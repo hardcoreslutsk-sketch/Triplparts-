@@ -1,20 +1,8 @@
 (() => {
   'use strict';
 
-  const cfg = window.APP_CONFIG || {};
   const $ = id => document.getElementById(id);
-  const grid = $('product-grid');
-
-  if (!grid) return;
-
-  const statusEl = $('catalog-status');
-  const countEl = $('results-count');
-  const emptyEl = $('empty-state');
-  const template = $('product-template');
-
-  let products = [];
-  let client = null;
-  let contactDialog = null;
+  const cfg = window.APP_CONFIG || {};
 
   const configured =
     typeof cfg.SUPABASE_URL === 'string' &&
@@ -22,445 +10,636 @@
     typeof cfg.SUPABASE_ANON_KEY === 'string' &&
     cfg.SUPABASE_ANON_KEY.length > 20;
 
-  if (configured && window.supabase) {
-    client = window.supabase.createClient(
-      cfg.SUPABASE_URL,
-      cfg.SUPABASE_ANON_KEY,
-      {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true
+  if (!$('login-panel')) return;
+
+  const client = configured && window.supabase
+    ? window.supabase.createClient(
+        cfg.SUPABASE_URL,
+        cfg.SUPABASE_ANON_KEY,
+        {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            storage: window.localStorage
+          }
         }
-      }
-    );
-  }
+      )
+    : null;
 
-  const placeholder =
-    'data:image/svg+xml;charset=UTF-8,' +
-    encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg"
-        width="640" height="440" viewBox="0 0 640 440">
-        <rect width="640" height="440" fill="#edf0ef"/>
-        <text x="320" y="210" text-anchor="middle"
-          font-family="Arial" font-size="28"
-          font-weight="bold" fill="#26332f">TRIPL PARTS</text>
-        <text x="320" y="250" text-anchor="middle"
-          font-family="Arial" font-size="16"
-          fill="#68736e">USED AUTO PARTS</text>
-      </svg>
-    `);
+  let products = [];
+  let vehicles = [];
+  let authReady = false;
+  let currentGallery = [];
+  let removedGallery = [];
 
-  const money = value =>
-    new Intl.NumberFormat('pl-PL', {
-      style: 'currency',
-      currency: 'PLN'
-    }).format(Number(value) || 0);
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[c]);
 
-  const esc = value =>
-    String(value ?? '').replace(/[&<>"']/g, char => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    })[char]);
+  const money = value => new Intl.NumberFormat('pl-PL', {
+    style: 'currency',
+    currency: 'PLN'
+  }).format(Number(value) || 0);
 
-  const statusText = status => ({
+  const statusText = value => ({
     available: 'Dostępna',
     reserved: 'Zarezerwowana',
     sold: 'Sprzedana'
-  }[status] || 'Dostępna');
+  }[value] || 'Dostępna');
 
-  function setStatus(message, visible = true) {
-    if (!statusEl) return;
-    statusEl.textContent = message;
-    statusEl.hidden = !visible;
+  function message(id, text, type = '') {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'form-message ' + type;
   }
 
-  function contactNumber() {
-    return String(cfg.WHATSAPP_NUMBER || '48726579717')
-      .replace(/\D/g, '');
+  function showUser(user) {
+    $('login-panel').hidden = !!user;
+    $('dashboard').hidden = !user;
+
+    if (user) {
+      loadAll();
+    }
   }
 
-  function phoneNumber() {
-    return String(cfg.PHONE_NUMBER || '+48726579717')
-      .trim();
+  function setTab(name) {
+    const productsActive = name === 'products';
+
+    $('tab-products').setAttribute('aria-selected', String(productsActive));
+    $('tab-vehicles').setAttribute('aria-selected', String(!productsActive));
+
+    $('panel-products').hidden = !productsActive;
+    $('panel-vehicles').hidden = productsActive;
   }
 
-  function productMessage(product) {
-    const vehicle = [
-      product.make,
-      product.model,
-      product.years
-    ].filter(Boolean).join(' ');
+  $('tab-products').addEventListener('click', () => setTab('products'));
+  $('tab-vehicles').addEventListener('click', () => setTab('vehicles'));
 
-    return [
-      'Dzień dobry! Proszę o informację o części:',
-      `Nazwa: ${product.name || ''}`,
-      vehicle ? `Samochód: ${vehicle}` : '',
-      product.oem ? `Numer OEM: ${product.oem}` : '',
-      product.price != null ? `Cena: ${money(product.price)}` : '',
-      product.dismantling_number
-        ? `Numer rozbieralni: ${product.dismantling_number}`
-        : ''
-    ].filter(Boolean).join('\n');
+  async function loadAll() {
+    if (!client) return;
+    await Promise.all([loadProducts(), loadVehicles()]);
   }
 
-  function openContact(product) {
-    closeContact();
+  async function loadProducts() {
+    const { data, error } = await client
+      .from('products')
+      .select('*')
+      .limit(5000);
 
-    const message = productMessage(product);
-    const whatsappUrl =
-      `https://wa.me/${contactNumber()}?text=${encodeURIComponent(message)}`;
-    const emailUrl =
-      `mailto:triplparts@gmail.com?subject=${encodeURIComponent(
-        'Zapytanie o część: ' + (product.name || '')
-      )}&body=${encodeURIComponent(message)}`;
+    if (error) {
+      message('inventory-message', 'Błąd pobierania części: ' + error.message, 'error');
+      return;
+    }
 
-    contactDialog = document.createElement('div');
-    contactDialog.className = 'tripl-contact-overlay';
-    contactDialog.setAttribute('role', 'presentation');
+    products = data || [];
+    $('admin-total').textContent = products.length;
+    renderProducts();
+    renderVehicleSelect();
+  }
 
-    contactDialog.innerHTML = `
-      <section class="tripl-contact-dialog"
-        role="dialog" aria-modal="true"
-        aria-labelledby="tripl-contact-title">
-        <button type="button" class="tripl-contact-close"
-          aria-label="Zamknij">×</button>
-        <p class="tripl-contact-eyebrow">TRIPL PARTS</p>
-        <h2 id="tripl-contact-title">Zapytaj o część</h2>
-        <p class="tripl-contact-product">${esc(product.name || '')}</p>
-        ${product.oem
-          ? `<p class="tripl-contact-oem">OEM: ${esc(product.oem)}</p>`
-          : ''}
-        <a class="tripl-contact-option tripl-whatsapp"
-          href="${esc(whatsappUrl)}" target="_blank" rel="noopener">
-          WhatsApp <span>↗</span>
-        </a>
-        <a class="tripl-contact-option"
-          href="tel:${esc(phoneNumber())}">
-          Zadzwoń <span>↗</span>
-        </a>
-        <a class="tripl-contact-option"
-          href="${esc(emailUrl)}">
-          E-mail <span>↗</span>
-        </a>
-      </section>
-    `;
+  async function loadVehicles() {
+    const { data, error } = await client
+      .from('vehicles')
+      .select('*')
+      .limit(2000);
 
-    if (!document.getElementById('tripl-contact-styles')) {
-      const style = document.createElement('style');
-      style.id = 'tripl-contact-styles';
-      style.textContent = `
-        .tripl-contact-overlay {
-          position: fixed; inset: 0; z-index: 99999;
-          display: flex; align-items: center; justify-content: center;
-          padding: 18px; background: rgba(8,12,11,.72);
-        }
-        .tripl-contact-dialog {
-          position: relative; width: 100%; max-width: 390px;
-          box-sizing: border-box; padding: 28px;
-          background: #fff; color: #17201c; border-radius: 16px;
-          box-shadow: 0 20px 70px rgba(0,0,0,.28);
-          font-family: Arial, sans-serif;
-        }
-        .tripl-contact-close {
-          position: absolute; top: 10px; right: 14px;
-          border: 0; background: transparent; color: #17201c;
-          font-size: 30px; cursor: pointer;
-        }
-        .tripl-contact-eyebrow {
-          margin: 0 0 8px; font-size: 11px;
-          letter-spacing: 2px; font-weight: 800;
-        }
-        .tripl-contact-dialog h2 {
-          margin: 0 0 12px; font-size: 25px;
-        }
-        .tripl-contact-product {
-          margin: 0 0 6px; font-weight: 700;
-        }
-        .tripl-contact-oem {
-          margin: 0 0 18px; color: #606b65; font-size: 13px;
-        }
-        .tripl-contact-option {
-          display: flex; justify-content: space-between;
-          align-items: center; box-sizing: border-box;
-          width: 100%; margin-top: 10px; padding: 14px 16px;
-          border: 1px solid #d9dfdb; border-radius: 9px;
-          color: #17201c; text-decoration: none;
-          font-size: 15px; font-weight: 700;
-        }
-        .tripl-contact-option.tripl-whatsapp {
-          background: #183d2b; border-color: #183d2b; color: #fff;
-        }
-        .tripl-contact-option:focus-visible,
-        .tripl-contact-close:focus-visible {
-          outline: 3px solid #7ab99a; outline-offset: 3px;
-        }
+    if (error) {
+      vehicles = [];
+      renderVehicles();
+      renderVehicleSelect();
+      message(
+        'vehicles-message',
+        'Nie udało się pobrać rozbieralni: ' + error.message,
+        'error'
+      );
+      return;
+    }
+
+    vehicles = data || [];
+    $('vehicle-total').textContent = vehicles.length;
+    renderVehicles();
+    renderVehicleSelect();
+  }
+
+  function renderProducts() {
+    const body = $('inventory-body');
+    const query = $('admin-search').value.trim().toLocaleLowerCase('pl');
+
+    const filtered = products.filter(p =>
+      [
+        p.name, p.category, p.make, p.model, p.years,
+        p.oem, p.description, p.dismantling_number
+      ].some(v => String(v || '').toLocaleLowerCase('pl').includes(query))
+    );
+
+    body.innerHTML = filtered.map(p => {
+      const linkedVehicle = vehicles.find(v =>
+        String(v.id) === String(p.vehicle_id)
+      );
+
+      const dismantlingNumber =
+        p.dismantling_number ||
+        linkedVehicle?.dismantling_number ||
+        '';
+
+      return `
+        <tr>
+          <td>
+            <strong>${esc(p.name)}</strong>
+            <br><small>${esc(p.category || '')}</small>
+          </td>
+          <td>${esc([p.make, p.model, p.years].filter(Boolean).join(' '))}
+            ${dismantlingNumber
+              ? `<br><small>${esc(dismantlingNumber)}</small>`
+              : ''}
+          </td>
+          <td>${esc(p.oem || '—')}</td>
+          <td>${money(p.price)}</td>
+          <td>${esc(statusText(p.status))}</td>
+          <td>
+            <div class="row-actions">
+              <button type="button" data-edit-product="${esc(p.id)}">Edytuj</button>
+              <button type="button" class="danger"
+                data-delete-product="${esc(p.id)}">Usuń</button>
+            </div>
+          </td>
+        </tr>
       `;
-      document.head.appendChild(style);
+    }).join('');
+
+    if (!filtered.length) {
+      body.innerHTML = '<tr><td colspan="6">Brak części.</td></tr>';
     }
-
-    document.body.appendChild(contactDialog);
-
-    contactDialog.querySelector('.tripl-contact-close')
-      .addEventListener('click', closeContact);
-
-    contactDialog.addEventListener('click', event => {
-      if (event.target === contactDialog) closeContact();
-    });
-
-    document.addEventListener('keydown', handleContactKey);
-    contactDialog.querySelector('.tripl-contact-close').focus();
   }
 
-  function handleContactKey(event) {
-    if (event.key === 'Escape') closeContact();
-  }
+  function renderVehicles() {
+    const body = $('vehicles-body');
+    const query = $('vehicle-search').value.trim().toLocaleLowerCase('pl');
 
-  function closeContact() {
-    if (contactDialog) {
-      contactDialog.remove();
-      contactDialog = null;
-    }
-    document.removeEventListener('keydown', handleContactKey);
-  }
-
-  function setFilters() {
-    const categorySelect = $('category-filter');
-    const makeSelect = $('make-filter');
-
-    if (!categorySelect || !makeSelect) return;
-
-    const oldCategory = categorySelect.value;
-    const oldMake = makeSelect.value;
-
-    const categories = [...new Set(
-      products.map(product => product.category).filter(Boolean)
-    )].sort((a, b) => a.localeCompare(b, 'pl'));
-
-    const makes = [...new Set(
-      products.map(product => product.make).filter(Boolean)
-    )].sort((a, b) => a.localeCompare(b, 'pl'));
-
-    categorySelect.innerHTML =
-      '<option value="">Wszystkie kategorie</option>' +
-      categories.map(value =>
-        `<option value="${esc(value)}">${esc(value)}</option>`
-      ).join('');
-
-    makeSelect.innerHTML =
-      '<option value="">Wszystkie marki</option>' +
-      makes.map(value =>
-        `<option value="${esc(value)}">${esc(value)}</option>`
-      ).join('');
-
-    categorySelect.value = oldCategory;
-    makeSelect.value = oldMake;
-  }
-
-  function render() {
-    if (!template || !template.content) {
-      setStatus('Brakuje szablonu kart produktów w index.html.');
-      return;
-    }
-
-    const searchInput = $('search');
-    const categoryInput = $('category-filter');
-    const makeInput = $('make-filter');
-
-    const term = (searchInput?.value || '').trim().toLocaleLowerCase('pl');
-    const category = categoryInput?.value || '';
-    const make = makeInput?.value || '';
-
-    const filtered = products.filter(product => {
-      if (product.status === 'sold') return false;
-      if (category && product.category !== category) return false;
-      if (make && product.make !== make) return false;
-
-      if (!term) return true;
-
-      return [
-        product.name,
-        product.category,
-        product.make,
-        product.model,
-        product.years,
-        product.oem,
-        product.description,
-        product.dismantling_number
+    const filtered = vehicles.filter(v =>
+      [
+        v.dismantling_number, v.make, v.model, v.years
       ].some(value =>
-        String(value || '').toLocaleLowerCase('pl').includes(term)
-      );
-    });
+        String(value || '').toLocaleLowerCase('pl').includes(query)
+      )
+    );
 
-    grid.replaceChildren();
+    body.innerHTML = filtered.map(v => `
+      <tr>
+        <td><strong>${esc(v.dismantling_number || '—')}</strong></td>
+        <td>${esc(v.make || '—')}</td>
+        <td>${esc(v.model || '—')}</td>
+        <td>${esc(v.years || '—')}</td>
+        <td>
+          <div class="row-actions">
+            <button type="button" data-edit-vehicle="${esc(v.id)}">Edytuj</button>
+            <button type="button" class="danger"
+              data-delete-vehicle="${esc(v.id)}">Usuń</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
 
-    filtered.forEach(product => {
-      const fragment = template.content.cloneNode(true);
-      const card = fragment.querySelector('.product-card');
-      const img = fragment.querySelector('.product-image');
-      const badge = fragment.querySelector('.stock-badge');
-      const contact = fragment.querySelector('.product-contact');
-
-      if (img) {
-        img.src = product.image_url || placeholder;
-        img.alt = product.name || 'Część samochodowa';
-        img.loading = 'lazy';
-        img.onerror = () => {
-          img.onerror = null;
-          img.src = placeholder;
-        };
-      }
-
-      if (badge) {
-        badge.textContent = statusText(product.status);
-        badge.classList.add(product.status || 'available');
-        if (product.status === 'reserved') {
-          badge.textContent = 'Zapytaj o dostępność';
-        }
-      }
-
-      const categoryEl = fragment.querySelector('.product-category');
-      const nameEl = fragment.querySelector('.product-name');
-      const fitmentEl = fragment.querySelector('.product-fitment');
-      const oemEl = fragment.querySelector('.product-oem');
-      const priceEl = fragment.querySelector('.product-price');
-
-      if (categoryEl) {
-        categoryEl.textContent = product.category || 'Części samochodowe';
-      }
-      if (nameEl) nameEl.textContent = product.name || 'Część samochodowa';
-
-      if (fitmentEl) {
-        fitmentEl.textContent = [
-          product.make,
-          product.model,
-          product.years
-        ].filter(Boolean).join(' · ') || 'Zapytaj o dopasowanie';
-      }
-
-      if (oemEl) {
-        oemEl.textContent = product.oem ? `OEM: ${product.oem}` : '';
-      }
-
-      if (priceEl) priceEl.textContent = money(product.price);
-
-      if (contact) {
-        contact.href = '#kontakt';
-        contact.removeAttribute('target');
-        contact.addEventListener('click', event => {
-          event.preventDefault();
-          openContact(product);
-        });
-        contact.textContent = 'Zapytaj o część';
-      }
-
-      if (card) {
-        card.setAttribute('aria-label', product.name || 'Część samochodowa');
-      }
-
-      grid.appendChild(fragment);
-    });
-
-    if (countEl) {
-      countEl.textContent =
-        `${filtered.length} ${filtered.length === 1
-          ? 'produkt'
-          : filtered.length < 5 ? 'produkty' : 'produktów'}`;
+    if (!filtered.length) {
+      body.innerHTML = '<tr><td colspan="5">Brak rozbieralni.</td></tr>';
     }
-
-    if (emptyEl) emptyEl.hidden = filtered.length !== 0;
   }
 
-  async function load() {
-    if (!client) {
-      products = [];
-      render();
-      setStatus(
-        'Katalog nie jest połączony z Supabase. Sprawdź ustawienia w config.js.'
-      );
-      return;
+  function renderVehicleSelect(selectedId = '') {
+    const select = $('p-vehicle');
+    if (!select) return;
+
+    select.innerHTML =
+      '<option value="">Bez przypisania</option>' +
+      vehicles.map(v => `
+        <option value="${esc(v.id)}">
+          ${esc(v.dismantling_number || '')} — ${esc(v.make || '')} ${esc(v.model || '')}
+        </option>
+      `).join('');
+
+    select.value = selectedId || '';
+  }
+
+  function galleryOf(product) {
+    if (Array.isArray(product.gallery_urls)) {
+      return product.gallery_urls.filter(Boolean);
     }
 
-    setStatus('Ładowanie katalogu…');
+    if (typeof product.gallery_urls === 'string') {
+      try {
+        const parsed = JSON.parse(product.gallery_urls);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean);
+      } catch (_) {}
+    }
 
-    try {
-      const { data, error } = await client
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(5000);
+    return product.image_url ? [product.image_url] : [];
+  }
+
+  function renderGallery() {
+    const box = $('current-images');
+    box.innerHTML = '';
+
+    currentGallery.forEach((url, index) => {
+      const item = document.createElement('div');
+      item.className = 'image-preview-item';
+
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = 'Zdjęcie ' + (index + 1);
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = 'Usuń zdjęcie';
+      button.addEventListener('click', () => {
+        removedGallery.push(url);
+        currentGallery.splice(index, 1);
+        renderGallery();
+      });
+
+      item.append(img, button);
+      box.appendChild(item);
+    });
+
+    if (!currentGallery.length) {
+      box.innerHTML = '<span class="muted">Brak zapisanych zdjęć.</span>';
+    }
+  }
+
+  function resetProductForm() {
+    $('product-form').reset();
+    $('product-id').value = '';
+    currentGallery = [];
+    removedGallery = [];
+    renderGallery();
+    renderVehicleSelect();
+
+    $('form-title').textContent = 'Dodaj część';
+    $('save-product').textContent = 'Zapisz część';
+    $('cancel-edit').hidden = true;
+    message('form-message', '');
+  }
+
+  function editProduct(product) {
+    $('product-id').value = product.id;
+    $('p-name').value = product.name || '';
+    $('p-category').value = product.category || '';
+    $('p-make').value = product.make || '';
+    $('p-model').value = product.model || '';
+    $('p-years').value = product.years || '';
+    $('p-oem').value = product.oem || '';
+    $('p-price').value = product.price ?? '';
+    $('p-status').value = product.status || 'available';
+    $('p-description').value = product.description || '';
+    $('p-dismantling-number').value = product.dismantling_number || '';
+
+    const linked = vehicles.find(v =>
+      String(v.id) === String(product.vehicle_id)
+    );
+    renderVehicleSelect(linked?.id || product.vehicle_id || '');
+
+    currentGallery = galleryOf(product);
+    removedGallery = [];
+    renderGallery();
+
+    $('form-title').textContent = 'Edytuj część';
+    $('save-product').textContent = 'Zapisz zmiany';
+    $('cancel-edit').hidden = false;
+    setTab('products');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function uploadImages(files) {
+    const urls = [];
+
+    for (const file of files) {
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        throw new Error('Dozwolone formaty: JPG, PNG i WebP.');
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Każde zdjęcie może mieć maksymalnie 5 MB.');
+      }
+
+      const extension = file.type === 'image/png'
+        ? 'png'
+        : file.type === 'image/webp' ? 'webp' : 'jpg';
+
+      const path = `${crypto.randomUUID()}.${extension}`;
+
+      const { error } = await client.storage
+        .from('product-images')
+        .upload(path, file, {
+          upsert: false,
+          contentType: file.type
+        });
 
       if (error) throw error;
 
-      products = data || [];
-      setFilters();
-      render();
+      const { data } = client.storage
+        .from('product-images')
+        .getPublicUrl(path);
 
-      if (products.length === 0) {
-        setStatus('Katalog jest pusty. Dodaj części w panelu administratora.');
-      } else {
-        setStatus('', false);
-      }
-    } catch (error) {
-      console.error('TRIPL PARTS: błąd pobierania katalogu', error);
-      products = [];
-      render();
-      setStatus(
-        'Nie udało się pobrać części. Sprawdź połączenie i uprawnienia Supabase.'
+      urls.push(data.publicUrl);
+    }
+
+    return urls;
+  }
+
+  async function saveProduct(event) {
+    event.preventDefault();
+
+    const button = $('save-product');
+    button.disabled = true;
+    message('form-message', 'Zapisywanie…');
+
+    try {
+      const id = $('product-id').value;
+      const files = Array.from($('p-images').files || []);
+      const uploaded = await uploadImages(files);
+      const gallery = [...currentGallery, ...uploaded];
+
+      const selectedVehicleId = $('p-vehicle').value || null;
+      const selectedVehicle = vehicles.find(v =>
+        String(v.id) === String(selectedVehicleId)
       );
+
+      const payload = {
+        name: $('p-name').value.trim(),
+        category: $('p-category').value.trim(),
+        make: $('p-make').value.trim() || selectedVehicle?.make || null,
+        model: $('p-model').value.trim() || selectedVehicle?.model || null,
+        years: $('p-years').value.trim() || selectedVehicle?.years || null,
+        oem: $('p-oem').value.trim() || null,
+        price: Number($('p-price').value),
+        status: $('p-status').value,
+        description: $('p-description').value.trim() || null,
+        image_url: gallery[0] || null,
+        gallery_urls: gallery,
+        vehicle_id: selectedVehicleId,
+        dismantling_number:
+          $('p-dismantling-number').value.trim() ||
+          selectedVehicle?.dismantling_number ||
+          null
+      };
+
+      let result;
+
+      if (id) {
+        result = await client.from('products').update(payload).eq('id', id);
+      } else {
+        result = await client.from('products').insert(payload);
+      }
+
+      if (result.error) {
+        const errorText = result.error.message || '';
+
+        if (/column .* does not exist|schema cache/i.test(errorText)) {
+          throw new Error(
+            'W tabeli products brakuje jednego z pól używanych do powiązania galerii lub rozbieralni. Nie zmieniono struktury bazy. Szczegóły: ' +
+            errorText
+          );
+        }
+
+        throw result.error;
+      }
+
+      resetProductForm();
+      await loadProducts();
+      message('form-message', 'Część została zapisana.', 'success');
+    } catch (error) {
+      message(
+        'form-message',
+        'Nie udało się zapisać części: ' + (error.message || error),
+        'error'
+      );
+    } finally {
+      button.disabled = false;
     }
   }
 
-  if ($('search')) $('search').addEventListener('input', render);
-  if ($('category-filter')) {
-    $('category-filter').addEventListener('change', render);
-  }
-  if ($('make-filter')) $('make-filter').addEventListener('change', render);
-
-  const whatsapp = $('whatsapp-cta');
-  if (whatsapp) {
-    whatsapp.href = `https://wa.me/${contactNumber()}`;
-    whatsapp.target = '_blank';
-    whatsapp.rel = 'noopener';
+  function resetVehicleForm() {
+    $('vehicle-form').reset();
+    $('vehicle-id').value = '';
+    $('vehicle-form-title').textContent = 'Dodaj rozbieralnię / samochód dawcę';
+    $('save-vehicle').textContent = 'Zapisz rozbieralnię';
+    $('cancel-vehicle-edit').hidden = true;
+    message('vehicle-form-message', '');
   }
 
-  const phone = $('phone-cta');
-  if (phone) phone.href = `tel:${phoneNumber()}`;
+  function editVehicle(vehicle) {
+    $('vehicle-id').value = vehicle.id;
+    $('v-dismantling-number').value = vehicle.dismantling_number || '';
+    $('v-make').value = vehicle.make || '';
+    $('v-model').value = vehicle.model || '';
+    $('v-years').value = vehicle.years || '';
+    $('v-vin').value = vehicle.vin || '';
+    $('v-description').value = vehicle.description || '';
 
-  const email = $('email-cta');
-  if (email) email.href = 'mailto:triplparts@gmail.com';
+    $('vehicle-form-title').textContent = 'Edytuj rozbieralnię';
+    $('save-vehicle').textContent = 'Zapisz zmiany';
+    $('cancel-vehicle-edit').hidden = false;
 
-  const contactToggle = $('contact-toggle');
-  const contactOptions = $('contact-options');
+    setTab('vehicles');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
-  if (contactToggle && contactOptions) {
-    contactToggle.addEventListener('click', () => {
-      const opening = contactOptions.hidden;
-      contactOptions.hidden = !opening;
-      contactToggle.setAttribute('aria-expanded', String(opening));
-    });
+  async function saveVehicle(event) {
+    event.preventDefault();
 
-    document.addEventListener('click', event => {
-      if (
-        !contactOptions.hidden &&
-        !contactOptions.contains(event.target) &&
-        !contactToggle.contains(event.target)
-      ) {
-        contactOptions.hidden = true;
-        contactToggle.setAttribute('aria-expanded', 'false');
+    const button = $('save-vehicle');
+    button.disabled = true;
+    message('vehicle-form-message', 'Zapisywanie…');
+
+    try {
+      const id = $('vehicle-id').value;
+
+      // Zapisujemy wyłącznie pola, które widać w istniejącej tabeli vehicles.
+      // Nie dodajemy automatycznie niepotwierdzonych kolumn.
+      const payload = {
+        dismantling_number: $('v-dismantling-number').value.trim(),
+        make: $('v-make').value.trim(),
+        model: $('v-model').value.trim(),
+        years: $('v-years').value.trim() || null
+      };
+
+      const result = id
+        ? await client.from('vehicles').update(payload).eq('id', id)
+        : await client.from('vehicles').insert(payload);
+
+      if (result.error) throw result.error;
+
+      resetVehicleForm();
+      await loadVehicles();
+      message('vehicle-form-message', 'Rozbieralnia została zapisana.', 'success');
+    } catch (error) {
+      message(
+        'vehicle-form-message',
+        'Nie udało się zapisać rozbieralni: ' + (error.message || error),
+        'error'
+      );
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  $('login-form').addEventListener('submit', async event => {
+    event.preventDefault();
+
+    if (!client) {
+      message('login-message', 'Sprawdź konfigurację Supabase w config.js.', 'error');
+      return;
+    }
+
+    const button = $('login-button');
+    button.disabled = true;
+    message('login-message', 'Logowanie…');
+
+    try {
+      const { data, error } = await client.auth.signInWithPassword({
+        email: $('email').value.trim(),
+        password: $('password').value
+      });
+
+      if (error) throw error;
+
+      if (!data.session) {
+        throw new Error('Sesja nie została utworzona.');
+      }
+
+      message('login-message', '');
+      showUser(data.user);
+    } catch (error) {
+      message('login-message', 'Błąd logowania: ' + error.message, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  $('logout').addEventListener('click', async () => {
+    if (!client) return;
+
+    const { error } = await client.auth.signOut();
+
+    if (error) {
+      message('inventory-message', error.message, 'error');
+      return;
+    }
+
+    showUser(null);
+  });
+
+  $('product-form').addEventListener('submit', saveProduct);
+  $('cancel-edit').addEventListener('click', resetProductForm);
+  $('admin-search').addEventListener('input', renderProducts);
+  $('vehicle-form').addEventListener('submit', saveVehicle);
+  $('cancel-vehicle-edit').addEventListener('click', resetVehicleForm);
+  $('vehicle-search').addEventListener('input', renderVehicles);
+
+  $('inventory-body').addEventListener('click', async event => {
+    const editButton = event.target.closest('[data-edit-product]');
+    const deleteButton = event.target.closest('[data-delete-product]');
+
+    if (editButton) {
+      const product = products.find(p =>
+        String(p.id) === editButton.dataset.editProduct
+      );
+      if (product) editProduct(product);
+    }
+
+    if (deleteButton) {
+      const product = products.find(p =>
+        String(p.id) === deleteButton.dataset.deleteProduct
+      );
+
+      if (!product || !confirm(`Usunąć część „${product.name}”?`)) return;
+
+      const { error } = await client
+        .from('products')
+        .delete()
+        .eq('id', product.id);
+
+      if (error) {
+        message('inventory-message', error.message, 'error');
+        return;
+      }
+
+      message('inventory-message', 'Część została usunięta.', 'success');
+      await loadProducts();
+    }
+  });
+
+  $('vehicles-body').addEventListener('click', async event => {
+    const editButton = event.target.closest('[data-edit-vehicle]');
+    const deleteButton = event.target.closest('[data-delete-vehicle]');
+
+    if (editButton) {
+      const vehicle = vehicles.find(v =>
+        String(v.id) === editButton.dataset.editVehicle
+      );
+      if (vehicle) editVehicle(vehicle);
+    }
+
+    if (deleteButton) {
+      const vehicle = vehicles.find(v =>
+        String(v.id) === deleteButton.dataset.deleteVehicle
+      );
+
+      if (!vehicle || !confirm(
+        `Usunąć rozbieralnię ${vehicle.dismantling_number || ''}?`
+      )) return;
+
+      const { error } = await client
+        .from('vehicles')
+        .delete()
+        .eq('id', vehicle.id);
+
+      if (error) {
+        message('vehicles-message', error.message, 'error');
+        return;
+      }
+
+      message('vehicles-message', 'Rozbieralnia została usunięta.', 'success');
+      await loadVehicles();
+    }
+  });
+
+  if (!client) {
+    $('setup-warning').hidden = false;
+    $('setup-warning').textContent =
+      'Brak poprawnej konfiguracji Supabase. Sprawdź config.js.';
+  } else {
+    client.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        showUser(null);
+      } else if (session?.user) {
+        showUser(session.user);
+      } else if (authReady) {
+        showUser(null);
       }
     });
 
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape') {
-        contactOptions.hidden = true;
-        contactToggle.setAttribute('aria-expanded', 'false');
-      }
-    });
-  }
+    client.auth.getSession()
+      .then(({ data, error }) => {
+        authReady = true;
 
-  load();
+        if (error) {
+          message('login-message', 'Nie udało się odtworzyć sesji. Zaloguj się ponownie.', 'error');
+          showUser(null);
+          return;
+        }
+
+        showUser(data.session?.user || null);
+      })
+      .catch(() => {
+        authReady = true;
+        showUser(null);
+      });
+  }
 })();
