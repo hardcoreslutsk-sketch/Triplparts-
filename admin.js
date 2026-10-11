@@ -1,3 +1,4 @@
+
 (() => {
   const cfg = window.APP_CONFIG || {};
   const configured =
@@ -17,8 +18,13 @@
   let products = [];
   let vehicles = [];
   let currentImageUrl = "";
+  let currentGalleryUrls = [];
   let selectedVehicle = null;
   let lookupSequence = 0;
+
+  const MAX_IMAGES = 20;
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
   function message(id, text, type = "") {
     const el = $(id);
@@ -29,18 +35,13 @@
 
   function esc(s) {
     return String(s ?? "").replace(/[&<>"']/g, c => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[c]));
   }
 
   function money(n) {
     return new Intl.NumberFormat("pl-PL", {
-      style: "currency",
-      currency: "PLN"
+      style: "currency", currency: "PLN"
     }).format(Number(n) || 0);
   }
 
@@ -52,6 +53,57 @@
     }[s] || "Dostępna");
   }
 
+  function normalizeGallery(p) {
+    let urls = p?.gallery_urls;
+
+    if (typeof urls === "string") {
+      try { urls = JSON.parse(urls); } catch (_) { urls = []; }
+    }
+
+    if (!Array.isArray(urls)) urls = [];
+    urls = urls.filter(url => typeof url === "string" && url.trim());
+
+    if (p?.image_url && !urls.includes(p.image_url)) {
+      urls.unshift(p.image_url);
+    }
+
+    return [...new Set(urls)].slice(0, MAX_IMAGES);
+  }
+
+  function updateGalleryCount() {
+    const count = $("gallery-count");
+    if (count) {
+      count.textContent = `${currentGalleryUrls.length} z ${MAX_IMAGES} zdjęć`;
+    }
+  }
+
+  function renderCurrentGallery() {
+    const box = $("current-image");
+    if (!box) return;
+
+    box.innerHTML = currentGalleryUrls.map((url, index) => `
+      <div class="gallery-admin-item">
+        <img src="${esc(url)}" alt="Zdjęcie ${index + 1}" loading="lazy">
+        <label>
+          <input type="checkbox" data-remove-image="${index}">
+          Usuń zdjęcie
+        </label>
+        <small>${index === 0 ? "Główne zdjęcie" : `Zdjęcie ${index + 1}`}</small>
+      </div>
+    `).join("");
+
+    updateGalleryCount();
+  }
+
+  function getKeptGallery() {
+    const removed = new Set(
+      [...document.querySelectorAll("[data-remove-image]:checked")]
+        .map(el => Number(el.dataset.removeImage))
+    );
+
+    return currentGalleryUrls.filter((_, index) => !removed.has(index));
+  }
+
   function showUser(user) {
     $("login-panel").hidden = !!user;
     $("dashboard").hidden = !user;
@@ -60,23 +112,15 @@
 
   function vehicleDetails(v) {
     const fields = [
-      ["Marka", v.make],
-      ["Model", v.model],
-      ["Rok", v.year],
-      ["VIN", v.vin],
-      ["Silnik", v.engine],
-      ["Paliwo", v.fuel],
-      ["Skrzynia biegów", v.transmission],
-      ["Napęd", v.drivetrain],
-      ["Strona kierownicy", v.steering_side],
-      ["Uwagi", v.notes]
+      ["Marka", v.make], ["Model", v.model], ["Rok", v.year],
+      ["VIN", v.vin], ["Silnik", v.engine], ["Paliwo", v.fuel],
+      ["Skrzynia biegów", v.transmission], ["Napęd", v.drivetrain],
+      ["Strona kierownicy", v.steering_side], ["Uwagi", v.notes]
     ];
 
     return fields
-      .filter(([label, value]) => value !== null && value !== undefined && String(value).trim() !== "")
-      .map(([label, value]) =>
-        `<div><b>${esc(label)}:</b> ${esc(value)}</div>`
-      )
+      .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== "")
+      .map(([label, value]) => `<div><b>${esc(label)}:</b> ${esc(value)}</div>`)
       .join("");
   }
 
@@ -117,17 +161,11 @@
     if (sequence !== lookupSequence) return null;
 
     if (error) {
-      showVehicleInfo(null);
-      message(
-        "form-message",
-        "Błąd wyszukiwania samochodu: " + error.message,
-        "error"
-      );
+      message("form-message", "Błąd wyszukiwania samochodu: " + error.message, "error");
       return null;
     }
 
     if (!data) {
-      showVehicleInfo(null);
       message(
         "form-message",
         `Nie znaleziono samochodu o numerze ${normalized}. Najpierw dodaj go w sekcji samochodów.`,
@@ -141,8 +179,8 @@
     $("p-make").value = data.make || "";
     $("p-model").value = data.model || "";
     $("p-years").value = data.year ? String(data.year) : "";
-
     showVehicleInfo(data);
+
     return data;
   }
 
@@ -216,20 +254,20 @@
       )
       .forEach(p => {
         const vehicle = vehicles.find(v => String(v.id) === String(p.vehicle_id));
+        const gallery = normalizeGallery(p);
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
           <td>
             <div class="table-product">
-              ${p.image_url
-                ? `<img src="${esc(p.image_url)}" alt="">`
+              ${gallery[0]
+                ? `<img src="${esc(gallery[0])}" alt="">`
                 : '<div class="brand-mark">A</div>'}
               <div>
                 <b>${esc(p.name)}</b>
                 <small>${esc([p.category, p.make, p.model].filter(Boolean).join(" · "))}</small>
-                ${vehicle
-                  ? `<small>Rozbiórka: ${esc(vehicle.dismantling_number)}</small>`
-                  : ""}
+                <small>${gallery.length} zdjęć</small>
+                ${vehicle ? `<small>Rozbiórka: ${esc(vehicle.dismantling_number)}</small>` : ""}
               </div>
             </div>
           </td>
@@ -256,13 +294,14 @@
     $("product-form").reset();
     $("product-id").value = "";
     currentImageUrl = "";
+    currentGalleryUrls = [];
     selectedVehicle = null;
     showVehicleInfo(null);
-    $("current-image").hidden = true;
     $("current-image").innerHTML = "";
     $("form-title").textContent = "Dodaj nową część";
     $("save-product").textContent = "Zapisz część";
     $("cancel-edit").hidden = true;
+    updateGalleryCount();
     message("form-message", "");
   }
 
@@ -277,16 +316,14 @@
     $("p-price").value = p.price ?? "";
     $("p-status").value = p.status || "available";
     $("p-description").value = p.description || "";
-
     $("p-vehicle-number").value = "";
+
     selectedVehicle = null;
     showVehicleInfo(null);
 
-    currentImageUrl = p.image_url || "";
-    $("current-image").hidden = !currentImageUrl;
-    $("current-image").innerHTML = currentImageUrl
-      ? `<img src="${esc(currentImageUrl)}" alt="Aktualne zdjęcie"><span>Aktualne zdjęcie</span>`
-      : "";
+    currentGalleryUrls = normalizeGallery(p);
+    currentImageUrl = currentGalleryUrls[0] || p.image_url || "";
+    renderCurrentGallery();
 
     $("form-title").textContent = "Edytuj część";
     $("save-product").textContent = "Zapisz zmiany";
@@ -303,37 +340,62 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function uploadImage(file) {
-    if (!file) return currentImageUrl;
+  async function uploadImages(files) {
+    const urls = [];
 
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      throw new Error("Wybierz zdjęcie JPG, PNG lub WebP.");
+    for (const file of files) {
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        throw new Error("Wybierz zdjęcia JPG, PNG lub WebP.");
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error(`Zdjęcie „${file.name}” jest za duże. Maksymalny rozmiar to 5 MB.`);
+      }
+
+      const ext = file.type === "image/png" ? "png"
+        : file.type === "image/webp" ? "webp" : "jpg";
+
+      const path = `${crypto.randomUUID()}.${ext}`;
+
+      const { error } = await client.storage
+        .from("product-images")
+        .upload(path, file, {
+          upsert: false,
+          contentType: file.type
+        });
+
+      if (error) throw error;
+
+      const { data } = client.storage
+        .from("product-images")
+        .getPublicUrl(path);
+
+      urls.push(data.publicUrl);
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      throw new Error("Zdjęcie jest za duże. Maksymalny rozmiar to 5 MB.");
-    }
-
-    const ext = file.type === "image/png" ? "png"
-      : file.type === "image/webp" ? "webp" : "jpg";
-
-    const path = `${crypto.randomUUID()}.${ext}`;
-
-    const { error } = await client.storage
-      .from("product-images")
-      .upload(path, file, {
-        upsert: false,
-        contentType: file.type
-      });
-
-    if (error) throw error;
-
-    const { data } = client.storage
-      .from("product-images")
-      .getPublicUrl(path);
-
-    return data.publicUrl;
+    return urls;
   }
+
+  $("p-image").addEventListener("change", () => {
+    const selected = [...$("p-image").files];
+    const kept = getKeptGallery();
+    const available = MAX_IMAGES - kept.length;
+
+    if (selected.length > available) {
+      message(
+        "form-message",
+        `Можно добавить ещё максимум ${Math.max(0, available)} фото. Лимит — ${MAX_IMAGES}.`,
+        "error"
+      );
+      $("p-image").value = "";
+      return;
+    }
+
+    message(
+      "form-message",
+      selected.length ? `Выбрано новых фотографий: ${selected.length}.` : ""
+    );
+  });
 
   $("login-form").addEventListener("submit", async e => {
     e.preventDefault();
@@ -401,14 +463,9 @@
       await loadVehicles();
       $("vehicle-form").reset();
 
-      message(
-        "vehicle-form-message",
-        `Samochód ${data.dismantling_number} został dodany.`,
-        "success"
-      );
+      message("vehicle-form-message", `Samochód ${data.dismantling_number} został dodany.`, "success");
     } catch (err) {
       const duplicate = /duplicate key|vehicles_dismantling_number_key|already exists/i.test(err.message || "");
-
       message(
         "vehicle-form-message",
         duplicate
@@ -450,18 +507,27 @@
 
     const btn = $("save-product");
     btn.disabled = true;
-    message("form-message", "Sprawdzanie samochodu…");
 
     try {
-      const vehicle = await findVehicle(number);
+      message("form-message", "Sprawdzanie samochodu…");
 
+      const vehicle = await findVehicle(number);
       if (!vehicle) {
         throw new Error("Nie można zapisać części bez prawidłowego numeru rozbiórkowego.");
       }
 
-      message("form-message", "Zapisywanie części…");
+      const keptUrls = getKeptGallery();
+      const files = [...$("p-image").files];
 
-      const image_url = await uploadImage($("p-image").files[0]);
+      if (keptUrls.length + files.length > MAX_IMAGES) {
+        throw new Error(`В галерее может быть не более ${MAX_IMAGES} фотографий.`);
+      }
+
+      message("form-message", "Загрузка фотографий и сохранение…");
+
+      const newUrls = await uploadImages(files);
+      const galleryUrls = [...keptUrls, ...newUrls].slice(0, MAX_IMAGES);
+      const imageUrl = galleryUrls[0] || null;
 
       const payload = {
         name: $("p-name").value.trim(),
@@ -473,12 +539,12 @@
         price: Number($("p-price").value),
         status: $("p-status").value,
         description: $("p-description").value.trim() || null,
-        image_url: image_url || null,
+        image_url: imageUrl,
+        gallery_urls: galleryUrls,
         vehicle_id: vehicle.id
       };
 
       const id = $("product-id").value;
-
       const result = id
         ? await client.from("products").update(payload).eq("id", id).select().single()
         : await client.from("products").insert(payload).select().single();
@@ -511,7 +577,6 @@
 
     if (deleteId) {
       const p = products.find(x => String(x.id) === deleteId);
-
       if (!p || !confirm(`Usunąć część „${p.name}”? Tej operacji nie można cofnąć.`)) return;
 
       const { error } = await client.from("products").delete().eq("id", deleteId);
@@ -539,4 +604,4 @@
       showUser(session?.user || null);
     });
   }
-})(); 
+})();
