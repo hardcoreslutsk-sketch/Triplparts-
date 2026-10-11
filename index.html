@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pl">
 <head>
@@ -12,45 +13,340 @@
   <script defer src="app.js"></script>
 
   <style>
-    .product-card{cursor:pointer}
-    .product-card .product-contact{cursor:pointer}
-    .product-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
-    .product-details-button{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border:1px solid #d7dedb;border-radius:6px;background:#fff;color:#202925;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
-    .product-details-button:hover{background:#f0f3f1}
-    .product-modal[hidden]{display:none!important}
-    .product-modal{position:fixed!important;inset:0!important;z-index:2147483000!important;display:flex;align-items:center;justify-content:center;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));background:rgba(15,22,19,.76);overflow:hidden;box-sizing:border-box;isolation:isolate}
-    .product-modal-dialog{position:relative;width:100%;max-width:760px;height:auto;max-height:100%;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#fff;color:#202925;border-radius:12px;box-shadow:0 20px 70px rgba(0,0,0,.3);box-sizing:border-box}
-    .product-modal-topbar{position:sticky;top:0;z-index:100;display:flex;justify-content:flex-end;align-items:center;height:58px;min-height:58px;padding:8px 10px;background:rgba(255,255,255,.98);border-bottom:1px solid #edf0ee;box-sizing:border-box}
-    .product-modal-close{position:relative!important;inset:auto!important;float:none!important;z-index:101!important;display:flex!important;align-items:center!important;justify-content:center!important;flex:0 0 42px;width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;margin:0!important;padding:0!important;border:0!important;border-radius:50%!important;background:#edf0ee!important;color:#202925!important;font-family:Arial,sans-serif!important;font-size:29px!important;font-weight:400!important;line-height:1!important;text-align:center!important;box-sizing:border-box!important;appearance:none;-webkit-appearance:none;cursor:pointer}
-    .product-modal-close:hover{background:#dfe5e1!important}
-    .product-modal-content{padding:24px;box-sizing:border-box}
-    .product-modal-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;margin-bottom:24px}
-    .product-modal-image{display:block;width:100%;aspect-ratio:4/3;object-fit:contain;background:#f1f3f2;border-radius:8px}
-    .product-modal-category{margin:0 0 8px;color:#66716b;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
-    .product-modal-title{margin:0 0 12px;font-size:clamp(22px,4vw,30px);line-height:1.2;overflow-wrap:anywhere}
-    .product-modal-fitment{margin-bottom:10px;color:#4f5b54}
-    .product-modal-oem{margin-bottom:12px;font-size:14px;overflow-wrap:anywhere}
-    .product-modal-price{margin:16px 0;font-size:26px;font-weight:700}
-    .product-modal-description{margin-top:16px;white-space:pre-wrap;line-height:1.6;overflow-wrap:anywhere}
-    .product-vehicle{padding:18px;border:1px solid #e0e5e2;border-radius:8px;background:#f8f9f8;overflow-wrap:anywhere}
-    .product-vehicle h3{margin:0 0 14px;font-size:18px}
-    .vehicle-number{margin-bottom:14px;padding:12px;background:#e9eeeb;border-radius:6px;line-height:1.5;overflow-wrap:anywhere}
-    .vehicle-detail-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}
-    .vehicle-detail-row{display:flex;flex-direction:column;gap:4px;padding:10px 0;border-bottom:1px solid #e1e5e2;overflow-wrap:anywhere}
-    .vehicle-detail-row span{color:#68736c;font-size:12px}
-    .vehicle-detail-row strong{font-size:14px;overflow-wrap:anywhere}
-    .product-modal-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
-    .product-modal-actions a{text-decoration:none;text-align:center}
-    body.modal-open{overflow:hidden!important}
-    @media(max-width:560px){
-      .product-modal{padding:0;align-items:stretch}
-      .product-modal-dialog{width:100%;max-width:none;height:100%;height:100dvh;max-height:100%;border-radius:0}
-      .product-modal-topbar{height:58px;min-height:58px;padding:8px 12px}
-      .product-modal-content{padding:16px}
-      .product-modal-main{grid-template-columns:minmax(0,1fr);gap:16px}
-      .product-modal-image{max-height:260px}
-      .vehicle-detail-list{grid-template-columns:minmax(0,1fr)}
-      .product-vehicle{padding:14px}
+    .product-card {
+      cursor: pointer;
+    }
+
+    .product-actions {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .product-details-button,
+    .product-contact {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 10px 14px;
+      border: 1px solid #d7dedb;
+      border-radius: 7px;
+      background: #fff;
+      color: #202925;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.3;
+      text-align: center;
+      text-decoration: none;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+
+    .product-details-button:hover {
+      background: #f0f3f1;
+    }
+
+    .product-contact {
+      border-color: #1b6b48;
+      background: #1b6b48;
+      color: #fff;
+    }
+
+    .product-contact:hover {
+      border-color: #15563a;
+      background: #15563a;
+    }
+
+    .product-contact-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 10px 14px;
+      border: 1px solid #1b6b48;
+      border-radius: 7px;
+      background: #1b6b48;
+      color: #fff;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.3;
+      text-align: center;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+
+    .product-contact-button:hover {
+      border-color: #15563a;
+      background: #15563a;
+    }
+
+    .product-modal[hidden] {
+      display: none !important;
+    }
+
+    .product-modal {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 2147483000 !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(8px,env(safe-area-inset-top))
+               max(8px,env(safe-area-inset-right))
+               max(8px,env(safe-area-inset-bottom))
+               max(8px,env(safe-area-inset-left));
+      background: rgba(15,22,19,.76);
+      overflow: hidden;
+      box-sizing: border-box;
+      isolation: isolate;
+    }
+
+    .product-modal-dialog {
+      position: relative;
+      width: 100%;
+      max-width: 760px;
+      height: auto;
+      max-height: 100%;
+      overflow: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      background: #fff;
+      color: #202925;
+      border-radius: 12px;
+      box-shadow: 0 20px 70px rgba(0,0,0,.3);
+      box-sizing: border-box;
+    }
+
+    .product-modal-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      height: 58px;
+      min-height: 58px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,.98);
+      border-bottom: 1px solid #edf0ee;
+      box-sizing: border-box;
+    }
+
+    .product-modal-close {
+      position: relative !important;
+      inset: auto !important;
+      float: none !important;
+      z-index: 101 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      flex: 0 0 42px;
+      width: 42px !important;
+      height: 42px !important;
+      min-width: 42px !important;
+      min-height: 42px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      border-radius: 50% !important;
+      background: #edf0ee !important;
+      color: #202925 !important;
+      font-family: Arial, sans-serif !important;
+      font-size: 29px !important;
+      font-weight: 400 !important;
+      line-height: 1 !important;
+      text-align: center !important;
+      box-sizing: border-box !important;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+
+    .product-modal-close:hover {
+      background: #dfe5e1 !important;
+    }
+
+    .product-modal-content {
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .product-modal-main {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .product-modal-image {
+      display: block;
+      width: 100%;
+      aspect-ratio: 4/3;
+      object-fit: contain;
+      background: #f1f3f2;
+      border-radius: 8px;
+    }
+
+    .product-modal-category {
+      margin: 0 0 8px;
+      color: #66716b;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .product-modal-title {
+      margin: 0 0 12px;
+      font-size: clamp(22px,4vw,30px);
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+
+    .product-modal-fitment {
+      margin-bottom: 10px;
+      color: #4f5b54;
+    }
+
+    .product-modal-oem {
+      margin-bottom: 12px;
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .product-modal-price {
+      margin: 16px 0;
+      font-size: 26px;
+      font-weight: 700;
+    }
+
+    .product-modal-description {
+      margin-top: 16px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .product-vehicle {
+      padding: 18px;
+      border: 1px solid #e0e5e2;
+      border-radius: 8px;
+      background: #f8f9f8;
+      overflow-wrap: anywhere;
+    }
+
+    .product-vehicle h3 {
+      margin: 0 0 14px;
+      font-size: 18px;
+    }
+
+    .vehicle-number {
+      margin-bottom: 14px;
+      padding: 12px;
+      background: #e9eeeb;
+      border-radius: 6px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .vehicle-detail-list {
+      display: grid;
+      grid-template-columns: repeat(2,minmax(0,1fr));
+      gap: 0 20px;
+    }
+
+    .vehicle-detail-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 0;
+      border-bottom: 1px solid #e1e5e2;
+      overflow-wrap: anywhere;
+    }
+
+    .vehicle-detail-row span {
+      color: #68736c;
+      font-size: 12px;
+    }
+
+    .vehicle-detail-row strong {
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .product-modal-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .product-modal-actions a,
+    .product-modal-actions button {
+      text-decoration: none;
+      text-align: center;
+    }
+
+    body.modal-open {
+      overflow: hidden !important;
+    }
+
+    @media(max-width:560px) {
+      .product-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+
+      .product-details-button,
+      .product-contact,
+      .product-contact-button {
+        width: 100%;
+      }
+
+      .product-modal {
+        padding: 0;
+        align-items: stretch;
+      }
+
+      .product-modal-dialog {
+        width: 100%;
+        max-width: none;
+        height: 100%;
+        height: 100dvh;
+        max-height: 100%;
+        border-radius: 0;
+      }
+
+      .product-modal-topbar {
+        height: 58px;
+        min-height: 58px;
+        padding: 8px 12px;
+      }
+
+      .product-modal-content {
+        padding: 16px;
+      }
+
+      .product-modal-main {
+        grid-template-columns: minmax(0,1fr);
+        gap: 16px;
+      }
+
+      .product-modal-image {
+        max-height: 260px;
+      }
+
+      .vehicle-detail-list {
+        grid-template-columns: minmax(0,1fr);
+      }
+
+      .product-vehicle {
+        padding: 14px;
+      }
     }
   </style>
 </head>
@@ -158,17 +454,20 @@
       <img class="product-image" alt="" loading="lazy">
       <span class="stock-badge"></span>
     </div>
+
     <div class="product-info">
       <div class="product-category"></div>
       <h3 class="product-name"></h3>
       <div class="product-fitment"></div>
       <div class="product-oem"></div>
+
       <div class="product-bottom">
         <strong class="product-price"></strong>
       </div>
+
       <div class="product-actions">
         <button class="product-details-button" type="button">Szczegóły ↗</button>
-        <a class="product-contact" target="_blank" rel="noopener">Zapytaj ↗</a>
+        <a class="product-contact" href="#" target="_blank" rel="noopener">Zapytaj o część ↗</a>
       </div>
     </div>
   </article>
