@@ -2,1034 +2,341 @@
 <html lang="pl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="description" content="TRIPL PARTS — używane części samochodowe. Wyszukaj część i skontaktuj się z nami przez WhatsApp, telefon lub e-mail.">
-  <meta name="theme-color" content="#13232d">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="TRIPL PARTS — używane części samochodowe w Polsce. Wyszukaj część i zapytaj o dostępność.">
+  <meta name="theme-color" content="#ffffff">
   <title>TRIPL PARTS — używane części samochodowe</title>
 
   <link rel="stylesheet" href="styles.css">
-  <link rel="icon" type="image/png" href="tripl-parts-logo.png">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
-  <script defer src="app.js"></script>
 
   <style>
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      letter-spacing: normal;
-      flex-shrink: 0;
-    }
-
-    .brand-logo {
-      display: block;
-      width: 54px;
-      height: 54px;
-      flex: 0 0 54px;
-      object-fit: contain;
-      border-radius: 50%;
-      background: #13232d;
-    }
-
-    .brand b {
-      display: block;
-      font-family: Manrope, sans-serif;
-      font-size: 17px;
-      font-weight: 800;
-      letter-spacing: .08em;
-      line-height: 1.25;
-      color: #15212a;
-    }
-
-    .brand small {
-      display: block;
-      margin-top: 4px;
-      color: #68747b;
-      font-size: 9px;
-      letter-spacing: .19em;
-    }
-
-    .brand-footer .brand-logo {
-      width: 46px;
-      height: 46px;
-      flex-basis: 46px;
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .header-contact-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
-      min-height: 42px;
-      padding: 10px 16px;
-      border: 1px solid #dce3df;
-      border-radius: 8px;
-      background: #fff;
-      color: #15212a;
-      font: 700 13px 'DM Sans', sans-serif;
-      cursor: pointer;
-      transition: background .15s, border-color .15s, transform .15s;
-    }
-
-    .header-contact-button:hover {
-      background: #f4f7f5;
-      border-color: #bfcac3;
-      transform: translateY(-1px);
-    }
-
-    .header-contact-button:focus-visible,
-    .site-contact-close:focus-visible,
-    .site-contact-option:focus-visible {
-      outline: 3px solid #f26a36;
-      outline-offset: 3px;
-    }
-
-    .header-contact-button .contact-button-icon {
-      font-size: 17px;
-      line-height: 1;
-    }
-
-    .header-actions .admin-link {
-      white-space: nowrap;
-    }
-
-    .site-contact-modal[hidden],
-    .product-modal[hidden] {
+    /* Tekstowy znak firmowy — bez pliku graficznego i bez logo. */
+    .brand-mark {
       display: none !important;
     }
 
-    .site-contact-modal {
-      position: fixed;
-      inset: 0;
-      z-index: 2147482500;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-      background: rgba(15, 25, 21, .66);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      overflow-y: auto;
-      overscroll-behavior: contain;
+    .topbar {
+      gap: 18px;
     }
 
-    .site-contact-dialog {
-      position: relative;
-      width: 100%;
-      max-width: 430px;
-      margin: auto;
-      padding: 28px;
-      border: 1px solid rgba(255,255,255,.7);
-      border-radius: 16px;
-      background: #fff;
-      color: #15212a;
-      box-shadow: 0 24px 80px rgba(0,0,0,.25);
-      box-sizing: border-box;
-      animation: contact-dialog-in .18s ease-out;
+    .brand {
+      flex: 0 0 auto;
     }
 
-    @keyframes contact-dialog-in {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .site-contact-close {
-      position: absolute;
-      top: 14px;
-      right: 14px;
-      display: grid;
-      place-items: center;
-      width: 38px;
-      height: 38px;
-      padding: 0;
-      border: 0;
-      border-radius: 50%;
-      background: #f0f3f1;
-      color: #26342d;
-      font: 400 27px/1 Arial, sans-serif;
-      cursor: pointer;
-    }
-
-    .site-contact-close:hover {
-      background: #e4eae6;
-    }
-
-    .site-contact-eyebrow {
-      margin: 0 44px 9px 0;
-      color: #1b6b48;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: .16em;
-      text-transform: uppercase;
-    }
-
-    .site-contact-title {
-      margin: 0 40px 8px 0;
-      font: 800 27px/1.2 Manrope, sans-serif;
-      letter-spacing: -.04em;
-    }
-
-    .site-contact-description {
-      margin: 0 0 22px;
-      color: #68747b;
-      font-size: 13px;
-      line-height: 1.65;
-    }
-
-    .site-contact-options {
-      display: grid;
-      gap: 10px;
-    }
-
-    .site-contact-option {
-      display: flex;
-      align-items: center;
-      gap: 13px;
-      min-width: 0;
-      padding: 13px;
-      border: 1px solid #e2e7e4;
-      border-radius: 10px;
-      background: #fff;
-      color: #15212a;
-      text-decoration: none;
-      transition: background .15s, border-color .15s;
-      box-sizing: border-box;
-    }
-
-    .site-contact-option:hover {
-      background: #f7f9f7;
-      border-color: #cbd7cf;
-    }
-
-    .site-contact-option-icon {
-      display: grid;
-      place-items: center;
-      flex: 0 0 42px;
-      width: 42px;
-      height: 42px;
-      border-radius: 9px;
-      background: #edf2ee;
-      color: #263a2e;
-      font-size: 21px;
-    }
-
-    .site-contact-option.whatsapp .site-contact-option-icon {
-      background: #e5f5eb;
-      color: #19834c;
-    }
-
-    .site-contact-option-content {
-      display: flex;
-      flex: 1;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 0;
-    }
-
-    .site-contact-option-content strong {
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .site-contact-option-content small {
-      color: #68747b;
-      font-size: 11px;
-      overflow-wrap: anywhere;
-    }
-
-    .site-contact-option-arrow {
-      color: #8a9690;
-      font-size: 18px;
-    }
-
-    body.site-contact-open,
-    body.modal-open {
-      overflow: hidden !important;
-    }
-
-    .product-actions {
-      display: flex;
-      gap: 10px;
-      align-items: stretch;
-      flex-wrap: wrap;
-      margin-top: 14px;
-    }
-
-    .product-details-button,
-    .product-contact {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 42px;
-      padding: 10px 14px;
-      border: 1px solid #d7dedb;
-      border-radius: 7px;
-      background: #fff;
-      color: #202925;
-      font: inherit;
-      font-size: 13px;
-      font-weight: 700;
-      line-height: 1.3;
-      text-align: center;
-      text-decoration: none;
-      box-sizing: border-box;
-      cursor: pointer;
-    }
-
-    .product-details-button:hover {
-      background: #f0f3f1;
-    }
-
-    .product-contact {
-      border-color: #1b6b48;
-      background: #1b6b48;
-      color: #fff;
-    }
-
-    .product-contact:hover {
-      border-color: #15563a;
-      background: #15563a;
-    }
-
-    .product-contact-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 42px;
-      padding: 10px 14px;
-      border: 1px solid #1b6b48;
-      border-radius: 7px;
-      background: #1b6b48;
-      color: #fff;
-      font: inherit;
-      font-size: 13px;
-      font-weight: 700;
-      line-height: 1.3;
-      text-align: center;
-      cursor: pointer;
-      box-sizing: border-box;
-    }
-
-    .product-contact-button:hover {
-      border-color: #15563a;
-      background: #15563a;
-    }
-
-    .product-modal {
-      position: fixed !important;
-      inset: 0 !important;
-      z-index: 2147483000 !important;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: max(8px,env(safe-area-inset-top))
-               max(8px,env(safe-area-inset-right))
-               max(8px,env(safe-area-inset-bottom))
-               max(8px,env(safe-area-inset-left));
-      background: rgba(15,22,19,.76);
-      overflow: hidden;
-      box-sizing: border-box;
-      isolation: isolate;
-    }
-
-    .product-modal-dialog {
-      position: relative;
-      width: 100%;
-      max-width: 760px;
-      height: auto;
-      max-height: 100%;
-      overflow: auto;
-      overscroll-behavior: contain;
-      -webkit-overflow-scrolling: touch;
-      background: #fff;
-      color: #202925;
-      border-radius: 12px;
-      box-shadow: 0 20px 70px rgba(0,0,0,.3);
-      box-sizing: border-box;
-    }
-
-    .product-modal-topbar {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      height: 58px;
-      min-height: 58px;
-      padding: 8px 10px;
-      background: rgba(255,255,255,.98);
-      border-bottom: 1px solid #edf0ee;
-      box-sizing: border-box;
-    }
-
-    .product-modal-close {
-      position: relative !important;
-      inset: auto !important;
-      float: none !important;
-      z-index: 101 !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      flex: 0 0 42px;
-      width: 42px !important;
-      height: 42px !important;
-      min-width: 42px !important;
-      min-height: 42px !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border: 0 !important;
-      border-radius: 50% !important;
-      background: #edf0ee !important;
-      color: #202925 !important;
-      font-family: Arial, sans-serif !important;
-      font-size: 29px !important;
-      font-weight: 400 !important;
-      line-height: 1 !important;
-      text-align: center !important;
-      box-sizing: border-box !important;
-      appearance: none;
-      -webkit-appearance: none;
-      cursor: pointer;
-    }
-
-    .product-modal-close:hover {
-      background: #dfe5e1 !important;
-    }
-
-    .product-modal-content {
-      padding: 24px;
-      box-sizing: border-box;
-    }
-
-    .product-modal-main {
-      display: grid;
-      grid-template-columns: minmax(0,1fr) minmax(0,1fr);
-      gap: 24px;
-      margin-bottom: 24px;
-    }
-
-    .product-modal-image {
-      display: block;
-      width: 100%;
-      aspect-ratio: 4/3;
-      object-fit: contain;
-      background: #f1f3f2;
-      border-radius: 8px;
-    }
-
-    .product-modal-category {
-      margin: 0 0 8px;
-      color: #66716b;
-      font-size: 12px;
-      text-transform: uppercase;
+    .brand b {
+      font-size: clamp(14px, 2vw, 19px);
       letter-spacing: .08em;
     }
 
-    .product-modal-title {
-      margin: 0 0 12px;
-      font-size: clamp(22px,4vw,30px);
-      line-height: 1.2;
-      overflow-wrap: anywhere;
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      position: relative;
     }
 
-    .product-modal-fitment {
-      margin-bottom: 10px;
-      color: #4f5b54;
-    }
-
-    .product-modal-oem {
-      margin-bottom: 12px;
+    .contact-toggle {
+      border: 1px solid #d8e0df;
+      background: #fff;
+      color: var(--ink);
       font-size: 14px;
-      overflow-wrap: anywhere;
+      padding: 12px 18px;
+      border-radius: 14px;
+      white-space: nowrap;
     }
 
-    .product-modal-price {
-      margin: 16px 0;
-      font-size: 26px;
+    .contact-options {
+      position: absolute;
+      z-index: 20;
+      top: calc(100% + 10px);
+      right: 0;
+      width: min(260px, calc(100vw - 32px));
+      padding: 10px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 12px 34px #15212a1f;
+    }
+
+    .contact-options[hidden] {
+      display: none !important;
+    }
+
+    .contact-options a {
+      display: block;
+      padding: 12px 13px;
+      border-radius: 8px;
+      font-size: 14px;
       font-weight: 700;
     }
 
-    .product-modal-description {
-      margin-top: 16px;
-      white-space: pre-wrap;
-      line-height: 1.6;
-      overflow-wrap: anywhere;
+    .contact-options a:hover {
+      background: var(--paper);
     }
 
-    .product-vehicle {
-      padding: 18px;
-      border: 1px solid #e0e5e2;
-      border-radius: 8px;
-      background: #f8f9f8;
-      overflow-wrap: anywhere;
+    .admin-link {
+      white-space: nowrap;
     }
 
-    .product-vehicle h3 {
-      margin: 0 0 14px;
-      font-size: 18px;
-    }
-
-    .vehicle-number {
-      margin-bottom: 14px;
-      padding: 12px;
-      background: #e9eeeb;
-      border-radius: 6px;
-      line-height: 1.5;
-      overflow-wrap: anywhere;
-    }
-
-    .vehicle-detail-list {
-      display: grid;
-      grid-template-columns: repeat(2,minmax(0,1fr));
-      gap: 0 20px;
-    }
-
-    .vehicle-detail-row {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 10px 0;
-      border-bottom: 1px solid #e1e5e2;
-      overflow-wrap: anywhere;
-    }
-
-    .vehicle-detail-row span {
-      color: #68736c;
-      font-size: 12px;
-    }
-
-    .vehicle-detail-row strong {
-      font-size: 14px;
-      overflow-wrap: anywhere;
-    }
-
-    .product-modal-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .product-modal-actions a,
-    .product-modal-actions button {
-      text-decoration: none;
-      text-align: center;
-    }
-
-    @media(max-width:1000px) {
-      .product-grid {
-        grid-template-columns: repeat(3,minmax(0,1fr));
-      }
-
-      .hero-art {
-        transform: scale(.8);
-        transform-origin: right center;
-        margin-left: -45px;
-      }
-    }
-
-    @media(max-width:900px) {
-      .header-actions {
-        gap: 8px;
-      }
-    }
-
-    @media(max-width:720px) {
-      .topbar {
-        min-height: 66px;
-        padding: 12px 18px;
-      }
-
-      .hero {
-        padding: 48px 24px;
-        min-height: 360px;
-      }
-
-      .hero-art {
-        position: absolute;
-        right: -80px;
-        bottom: -40px;
-        opacity: .28;
-        transform: scale(.9);
-      }
-
-      .hero-copy {
-        max-width: 100%;
-      }
-
-      .hero h1 {
-        font-size: 48px;
-      }
-
-      .catalog-section {
-        padding: 45px 17px 52px;
-      }
-
-      .section-heading {
-        align-items: start;
-        flex-direction: column;
-        gap: 9px;
-      }
-
-      .search-row {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .searchbox {
-        grid-column: 1/-1;
-        min-height: 47px;
-      }
-
-      .product-grid {
-        grid-template-columns: repeat(2,minmax(0,1fr));
-        gap: 10px;
-      }
-
-      .product-image-wrap {
-        height: 145px;
-      }
-
-      .product-info {
-        padding: 12px;
-      }
-
-      .product-name {
-        font-size: 14px;
-        min-height: 38px;
-      }
-
-      .product-price {
-        font-size: 16px;
-      }
-
-      .product-contact {
-        font-size: 10px;
-      }
-
-      .product-bottom {
-        align-items: start;
-        flex-direction: column;
-        gap: 7px;
-      }
-
-      .admin-main {
-        padding: 32px 14px 45px;
-      }
-
-      .admin-panel {
-        padding: 17px;
-      }
-
-      .form-grid {
-        grid-template-columns: 1fr;
-        gap: 13px;
-      }
-
-      .form-grid label,
-      .full {
-        grid-column: 1;
-      }
-
-      .inventory-heading {
-        align-items: start;
-        flex-direction: column;
-      }
-
-      .inventory-heading input {
-        max-width: none;
-      }
-
-      .admin-toolbar h2 {
-        font-size: 19px;
-      }
-    }
-
-    @media(max-width:560px) {
+    @media (max-width: 720px) {
       .topbar {
         height: auto;
         min-height: 66px;
-        padding: 10px 12px;
-        align-items: center;
-        flex-wrap: nowrap;
+        padding: 12px 16px;
+        gap: 10px;
+      }
+
+      .topbar-actions {
         gap: 8px;
       }
 
-      .brand {
-        gap: 7px;
-      }
-
-      .brand-logo {
-        width: 43px;
-        height: 43px;
-        flex-basis: 43px;
-      }
-
-      .brand b {
-        font-size: 13px;
-        letter-spacing: .045em;
-      }
-
-      .brand small {
-        font-size: 8px;
-        letter-spacing: .12em;
-      }
-
-      .header-actions {
-        width: auto;
-        display: flex;
-        flex-wrap: nowrap;
-        gap: 7px;
-      }
-
-      .header-contact-button {
-        min-height: 39px;
-        padding: 8px 10px;
+      .contact-toggle {
+        padding: 10px 12px;
         font-size: 12px;
       }
 
-      .header-actions .admin-link {
-        padding: 6px 0;
+      .admin-link {
         font-size: 10px;
       }
 
-      .site-contact-modal {
-        align-items: flex-end;
-        padding: 10px;
-      }
-
-      .site-contact-dialog {
-        max-width: 100%;
-        padding: 24px 20px 20px;
-        border-radius: 16px;
-        margin-bottom: max(0px,env(safe-area-inset-bottom));
-      }
-
-      .site-contact-title {
-        font-size: 25px;
-      }
-
-      .product-actions {
-        display: grid;
-        grid-template-columns: 1fr;
-      }
-
-      .product-details-button,
-      .product-contact,
-      .product-contact-button {
-        width: 100%;
-      }
-
-      .product-modal {
-        padding: 0;
-        align-items: stretch;
-      }
-
-      .product-modal-dialog {
-        width: 100%;
-        max-width: none;
-        height: 100%;
-        height: 100dvh;
-        max-height: 100%;
-        border-radius: 0;
-      }
-
-      .product-modal-topbar {
-        height: 58px;
-        min-height: 58px;
-        padding: 8px 12px;
-      }
-
-      .product-modal-content {
-        padding: 16px;
-      }
-
-      .product-modal-main {
-        grid-template-columns: minmax(0,1fr);
-        gap: 16px;
-      }
-
-      .product-modal-image {
-        max-height: 260px;
-      }
-
-      .vehicle-detail-list {
-        grid-template-columns: minmax(0,1fr);
-      }
-
-      .product-vehicle {
-        padding: 14px;
+      .brand small {
+        letter-spacing: .16em;
       }
     }
 
-    @media(max-width:370px) {
-      .brand {
-        gap: 5px;
+    @media (max-width: 390px) {
+      .topbar {
+        align-items: flex-start;
+        flex-wrap: wrap;
       }
 
-      .brand-logo {
-        width: 37px;
-        height: 37px;
-        flex-basis: 37px;
-      }
-
-      .brand b {
-        font-size: 11px;
-      }
-
-      .brand small {
-        font-size: 7px;
-      }
-
-      .header-contact-button {
-        padding: 8px;
-      }
-
-      .header-actions .admin-link {
-        font-size: 9px;
-      }
-
-      .product-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .product-image-wrap {
-        height: 200px;
-      }
-
-      .search-row {
-        grid-template-columns: 1fr;
-      }
-
-      .searchbox {
-        grid-column: 1;
-      }
-
-      .hero h1 {
-        font-size: 41px;
+      .topbar-actions {
+        width: 100%;
+        justify-content: space-between;
       }
     }
   </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script defer src="app.js"></script>
 </head>
 
 <body>
-<header class="topbar">
-  <a class="brand" href="./" aria-label="TRIPL PARTS — strona główna">
-    <img class="brand-logo" src="tripl-parts-logo.png" alt="Logo TRIPL PARTS">
-    <span>
-      <b>TRIPL PARTS</b>
-      <small>USED AUTO PARTS</small>
-    </span>
-  </a>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="TRIPL PARTS — strona główna">
+      <span>
+        <b>TRIPL PARTS</b>
+        <small>USED AUTO PARTS</small>
+      </span>
+    </a>
 
-  <nav class="header-actions" aria-label="Menu">
-    <button
-      class="header-contact-button"
-      type="button"
-      id="site-contact-open"
-      aria-haspopup="dialog"
-      aria-controls="site-contact-modal">
-      <span class="contact-button-icon" aria-hidden="true">✉</span>
-      Kontakty
-    </button>
-    <a class="admin-link" href="admin.html">Panel administratora ↗</a>
-  </nav>
-</header>
+    <div class="topbar-actions">
+      <button
+        class="button contact-toggle"
+        type="button"
+        id="contact-toggle"
+        aria-expanded="false"
+        aria-controls="contact-options">
+        ✉&nbsp; Kontakty
+      </button>
 
-<main>
-  <section class="hero">
-    <div class="hero-copy">
-      <span class="eyebrow">UŻYWANE CZĘŚCI • POLSKA</span>
-      <h1>Dobra część.<br><em>Rozsądna cena.</em></h1>
-      <p>Sprawdź dostępność używanych części samochodowych. Masz numer OEM? Wpisz go i znajdź właściwą część.</p>
-      <a class="button button-light" href="#catalog">Przeglądaj katalog <span>↓</span></a>
+      <a class="admin-link" href="admin.html">
+        Panel administratora ↗
+      </a>
+
+      <div class="contact-options" id="contact-options" hidden>
+        <a
+          id="whatsapp-cta"
+          href="https://wa.me/48726579717"
+          target="_blank"
+          rel="noopener">
+          WhatsApp ↗
+        </a>
+
+        <a id="phone-cta" href="tel:+48726579717">
+          Zadzwoń
+        </a>
+
+        <a id="email-cta" href="mailto:triplparts@gmail.com">
+          E-mail: triplparts@gmail.com
+        </a>
+      </div>
     </div>
+  </header>
 
-    <div class="hero-art" aria-hidden="true">
-      <div class="ring ring-one"></div>
-      <div class="ring ring-two"></div>
-      <div class="hero-label">USED<br>PARTS<br><strong>PL</strong></div>
-      <div class="hero-cross">✳</div>
-    </div>
-  </section>
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">UŻYWANE CZĘŚCI • POLSKA</span>
 
-  <section class="catalog-section" id="catalog">
-    <div class="section-heading">
+        <h1>
+          Dobra część.<br>
+          <em>Rozsądna cena.</em>
+        </h1>
+
+        <p>
+          Sprawdź dostępność używanych części samochodowych.
+          Masz numer OEM? Wpisz go i znajdź właściwą część.
+        </p>
+
+        <a class="button button-light" href="#catalog">
+          Przeglądaj katalog <span>↓</span>
+        </a>
+      </div>
+
+      <div class="hero-art" aria-hidden="true">
+        <div class="ring ring-one"></div>
+        <div class="ring ring-two"></div>
+        <div class="hero-label">
+          USED<br>
+          PARTS<br>
+          <strong>PL</strong>
+        </div>
+        <div class="hero-cross">✳</div>
+      </div>
+    </section>
+
+    <section class="catalog-section" id="catalog">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow dark-eyebrow">NASZ ASORTYMENT</span>
+          <h2>Znajdź swoją część</h2>
+        </div>
+
+        <span class="results-count" id="results-count">
+          Ładowanie katalogu…
+        </span>
+      </div>
+
+      <div class="search-row">
+        <label class="searchbox">
+          <span>⌕</span>
+          <input
+            id="search"
+            type="search"
+            placeholder="Szukaj części, OEM, marki lub modelu…"
+            autocomplete="off">
+        </label>
+
+        <select id="category-filter" aria-label="Kategoria">
+          <option value="">Wszystkie kategorie</option>
+        </select>
+
+        <select id="make-filter" aria-label="Marka">
+          <option value="">Wszystkie marki</option>
+        </select>
+      </div>
+
+      <div id="catalog-status" class="notice" hidden></div>
+
+      <div id="product-grid" class="product-grid"></div>
+
+      <div id="empty-state" class="empty-state" hidden>
+        <div class="empty-icon">⌕</div>
+        <h3>Nie znaleziono części</h3>
+        <p>
+          Spróbuj zmienić wyszukiwaną frazę lub skontaktuj się z nami.
+        </p>
+      </div>
+    </section>
+
+    <section class="contact-band">
       <div>
-        <span class="eyebrow dark-eyebrow">NASZ ASORTYMENT</span>
-        <h2>Znajdź swoją część</h2>
-      </div>
-      <span class="results-count" id="results-count">Ładowanie katalogu…</span>
-    </div>
-
-    <div class="search-row">
-      <label class="searchbox">
-        <span>⌕</span>
-        <input id="search" type="search" placeholder="Szukaj części, OEM, marki lub modelu…" autocomplete="off">
-      </label>
-
-      <select id="category-filter" aria-label="Kategoria">
-        <option value="">Wszystkie kategorie</option>
-      </select>
-
-      <select id="make-filter" aria-label="Marka">
-        <option value="">Wszystkie marki</option>
-      </select>
-    </div>
-
-    <div id="catalog-status" class="notice" hidden></div>
-    <div id="product-grid" class="product-grid"></div>
-
-    <div id="empty-state" class="empty-state" hidden>
-      <div class="empty-icon">⌕</div>
-      <h3>Nie znaleziono części</h3>
-      <p>Spróbuj zmienić wyszukiwaną frazę lub skontaktuj się z nami.</p>
-    </div>
-  </section>
-</main>
-
-<footer>
-  <a class="brand brand-footer" href="./" aria-label="TRIPL PARTS — strona główna">
-    <img class="brand-logo" src="tripl-parts-logo.png" alt="Logo TRIPL PARTS">
-    <span>
-      <b>TRIPL PARTS</b>
-      <small>USED AUTO PARTS</small>
-    </span>
-  </a>
-
-  <p>Używane części samochodowe · Polska</p>
-  <small>Przed zakupem potwierdź dostępność i zgodność części z pojazdem.</small>
-</footer>
-
-<template id="product-template">
-  <article class="product-card">
-    <div class="product-image-wrap">
-      <img class="product-image" alt="" loading="lazy">
-      <span class="stock-badge"></span>
-    </div>
-
-    <div class="product-info">
-      <div class="product-category"></div>
-      <h3 class="product-name"></h3>
-      <div class="product-fitment"></div>
-      <div class="product-oem"></div>
-
-      <div class="product-bottom">
-        <strong class="product-price"></strong>
+        <span class="eyebrow">NIE WIDZISZ TEGO, CZEGO SZUKASZ?</span>
+        <h2>Zapytaj o część.</h2>
+        <p>
+          Mamy szeroki wybór części używanych.
+          Wyślij numer OEM, model auta lub zdjęcie części.
+        </p>
       </div>
 
-      <div class="product-actions">
-        <button class="product-details-button" type="button">Szczegóły ↗</button>
-        <a class="product-contact" href="#" target="_blank" rel="noopener">Zapytaj o część ↗</a>
+      <div class="contact-actions">
+        <a
+          class="button button-green"
+          href="https://wa.me/48726579717"
+          target="_blank"
+          rel="noopener">
+          WhatsApp ↗
+        </a>
+
+        <a class="button button-outline" href="tel:+48726579717">
+          Zadzwoń
+        </a>
       </div>
-    </div>
-  </article>
-</template>
+    </section>
+  </main>
 
-<div id="product-modal" class="product-modal" hidden aria-hidden="true">
-  <div class="product-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-product-name">
-    <div class="product-modal-topbar">
-      <button type="button" id="product-modal-close" class="product-modal-close" aria-label="Zamknij">×</button>
-    </div>
-    <div id="product-modal-content" class="product-modal-content"></div>
-  </div>
-</div>
+  <footer>
+    <a class="brand brand-footer" href="./">
+      <span>
+        <b>TRIPL PARTS</b>
+        <small>USED AUTO PARTS</small>
+      </span>
+    </a>
 
-<div id="site-contact-modal" class="site-contact-modal" hidden aria-hidden="true">
-  <section
-    class="site-contact-dialog"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="site-contact-title"
-    aria-describedby="site-contact-description">
+    <p>Używane części samochodowe · Polska</p>
 
-    <button type="button" class="site-contact-close" id="site-contact-close" aria-label="Zamknij okno">×</button>
+    <small>
+      Przed zakupem potwierdź dostępność i zgodność części z pojazdem.
+    </small>
+  </footer>
 
-    <p class="site-contact-eyebrow">TRIPL PARTS</p>
-    <h2 class="site-contact-title" id="site-contact-title">Skontaktuj się z nami</h2>
-    <p class="site-contact-description" id="site-contact-description">
-      Wybierz dogodną formę kontaktu. Jeśli pytasz o konkretną część, skorzystaj z przycisku kontaktowego przy produkcie.
-    </p>
+  <template id="product-template">
+    <article class="product-card">
+      <div class="product-image-wrap">
+        <img class="product-image" alt="" loading="lazy">
+        <span class="stock-badge"></span>
+      </div>
 
-    <div class="site-contact-options">
-      <a class="site-contact-option whatsapp" href="https://wa.me/48726579717" target="_blank" rel="noopener noreferrer">
-        <span class="site-contact-option-icon" aria-hidden="true">◉</span>
-        <span class="site-contact-option-content">
-          <strong>WhatsApp</strong>
-          <small>Napisz wiadomość</small>
-        </span>
-        <span class="site-contact-option-arrow" aria-hidden="true">↗</span>
-      </a>
+      <div class="product-info">
+        <div class="product-category"></div>
+        <h3 class="product-name"></h3>
+        <div class="product-fitment"></div>
+        <div class="product-oem"></div>
 
-      <a class="site-contact-option" href="tel:+48726579717">
-        <span class="site-contact-option-icon" aria-hidden="true">☎</span>
-        <span class="site-contact-option-content">
-          <strong>Telefon</strong>
-          <small>+48 726 579 717</small>
-        </span>
-        <span class="site-contact-option-arrow" aria-hidden="true">↗</span>
-      </a>
+        <div class="product-bottom">
+          <strong class="product-price"></strong>
+          <a class="product-contact" target="_blank" rel="noopener">
+            Zapytaj ↗
+          </a>
+        </div>
+      </div>
+    </article>
+  </template>
 
-      <a class="site-contact-option" href="mailto:triplparts@gmail.com">
-        <span class="site-contact-option-icon" aria-hidden="true">✉</span>
-        <span class="site-contact-option-content">
-          <strong>E-mail</strong>
-          <small>triplparts@gmail.com</small>
-        </span>
-        <span class="site-contact-option-arrow" aria-hidden="true">↗</span>
-      </a>
-    </div>
-  </section>
-</div>
+  <script>
+    (() => {
+      const toggle = document.getElementById('contact-toggle');
+      const panel = document.getElementById('contact-options');
 
-<script>
-(() => {
-  const modal = document.getElementById("site-contact-modal");
-  const openButton = document.getElementById("site-contact-open");
-  const closeButton = document.getElementById("site-contact-close");
+      if (!toggle || !panel) return;
 
-  if (!modal || !openButton || !closeButton) return;
+      toggle.addEventListener('click', () => {
+        const willOpen = panel.hidden;
+        panel.hidden = !willOpen;
+        toggle.setAttribute('aria-expanded', String(willOpen));
+      });
 
-  let previouslyFocused = null;
+      document.addEventListener('click', event => {
+        if (
+          !panel.hidden &&
+          !panel.contains(event.target) &&
+          !toggle.contains(event.target)
+        ) {
+          panel.hidden = true;
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
 
-  function openContacts() {
-    previouslyFocused = document.activeElement;
-    modal.hidden = false;
-    modal.setAttribute("aria-hidden", "false");
-    document.body.classList.add("site-contact-open");
-    closeButton.focus();
-  }
-
-  function closeContacts() {
-    modal.hidden = true;
-    modal.setAttribute("aria-hidden", "true");
-    document.body.classList.remove("site-contact-open");
-
-    if (previouslyFocused && typeof previouslyFocused.focus === "function") {
-      previouslyFocused.focus();
-    }
-  }
-
-  openButton.addEventListener("click", openContacts);
-  closeButton.addEventListener("click", closeContacts);
-
-  modal.addEventListener("click", event => {
-    if (event.target === modal) closeContacts();
-  });
-
-  document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && !modal.hidden) closeContacts();
-  });
-})();
-</script>
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+          panel.hidden = true;
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
