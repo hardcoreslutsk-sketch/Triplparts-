@@ -1,430 +1,308 @@
 (() => {
   const cfg = window.APP_CONFIG || {};
-
   const configured =
-    !!cfg.SUPABASE_URL &&
-    !!cfg.SUPABASE_ANON_KEY &&
-    !cfg.SUPABASE_URL.includes("YOUR-PROJECT") &&
-    !cfg.SUPABASE_ANON_KEY.includes("YOUR_");
+    cfg.SUPABASE_URL && !cfg.SUPABASE_URL.includes('YOUR-PROJECT') &&
+    cfg.SUPABASE_ANON_KEY && !cfg.SUPABASE_ANON_KEY.includes('YOUR_');
 
   const $ = id => document.getElementById(id);
+  if (!document.getElementById('login-panel')) return;
 
-  if (!$("login-panel")) return;
-
+  const warning = $('setup-warning');
   const client = configured && window.supabase
-    ? window.supabase.createClient(
-        cfg.SUPABASE_URL,
-        cfg.SUPABASE_ANON_KEY,
-        {
-          auth: {
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: true,
-            storage: window.localStorage
-          }
-        }
-      )
+    ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
     : null;
 
   let products = [];
-  let currentImageUrl = "";
-  let authStateReady = false;
+  let currentImageUrl = '';
+  let currentImagePath = '';
 
-  function message(id, text, type = "") {
+  const STATUSES = ['available', 'reserved', 'sold'];
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+  function message(id, text, type = '') {
     const el = $(id);
     if (!el) return;
     el.textContent = text;
-    el.className = "form-message " + type;
+    el.className = 'form-message ' + type;
   }
 
-  function esc(value) {
-    return String(value ?? "").replace(/[&<>"']/g, char => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
-    }[char]));
+  function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
   }
 
-  function money(value) {
-    return new Intl.NumberFormat("pl-PL", {
-      style: "currency",
-      currency: "PLN"
-    }).format(Number(value) || 0);
+  function money(n) {
+    return new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(Number(n) || 0);
   }
 
-  function statusText(status) {
-    return ({
-      available: "Dostępna",
-      reserved: "Zarezerwowana",
-      sold: "Sprzedana"
-    }[status] || "Dostępna");
+  function statusText(s) {
+    return ({ available: 'Dostępna', reserved: 'Zarezerwowana', sold: 'Sprzedana' }[s] || 'Dostępna');
+  }
+
+  function statusClass(s) {
+    return STATUSES.includes(s) ? s : 'available';
+  }
+
+  function uuid() {
+    if (window.crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  function extractStoragePath(url) {
+    if (!url) return '';
+    const marker = '/product-images/';
+    const idx = url.indexOf(marker);
+    if (idx === -1) return '';
+    return url.slice(idx + marker.length);
+  }
+
+  async function deleteOldImage(oldUrl, newUrl) {
+    if (!oldUrl || oldUrl === newUrl) return;
+    const path = extractStoragePath(oldUrl);
+    if (!path) return;
+    try {
+      await client.storage.from('product-images').remove([path]);
+    } catch (e) {
+      console.warn('Nie udało się usunąć starego zdjęcia:', e);
+    }
   }
 
   function showUser(user) {
-    $("login-panel").hidden = !!user;
-    $("dashboard").hidden = !user;
-
+    $('login-panel').hidden = !!user;
+    $('dashboard').hidden = !user;
     if (user) refresh();
   }
 
   async function refresh() {
-    if (!client) return;
-
     const { data, error } = await client
-      .from("products")
-      .select("*")
-      .order("created_at", { ascending: false })
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false })
       .limit(5000);
 
     if (error) {
-      message(
-        "inventory-message",
-        "Błąd pobierania danych: " + error.message,
-        "error"
-      );
+      message('inventory-message', 'Błąd pobierania danych: ' + error.message, 'error');
       return;
     }
-
     products = data || [];
-    $("admin-total").textContent = products.length;
+    $('admin-total').textContent = products.length;
     renderInventory();
   }
 
   function renderInventory() {
-    const q = $("admin-search").value
-      .trim()
-      .toLocaleLowerCase("pl");
-
-    const body = $("inventory-body");
-    body.innerHTML = "";
+    const q = $('admin-search').value.trim().toLocaleLowerCase('pl');
+    const body = $('inventory-body');
+    body.innerHTML = '';
 
     products
-      .filter(p =>
-        [p.name, p.category, p.make, p.model, p.oem]
-          .some(value =>
-            String(value || "")
-              .toLocaleLowerCase("pl")
-              .includes(q)
-          )
-      )
+      .filter(p => [p.name, p.category, p.make, p.model, p.oem]
+        .some(v => String(v || '').toLocaleLowerCase('pl').includes(q)))
       .forEach(p => {
-        const tr = document.createElement("tr");
-
+        const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>
             <div class="table-product">
-              ${
-                p.image_url
-                  ? `<img src="${esc(p.image_url)}" alt="">`
-                  : "<span>TP</span>"
-              }
+              ${p.image_url
+                ? `<img src="${esc(p.image_url)}" alt="">`
+                : '<div class="brand-mark">A</div>'}
               <div>
                 <b>${esc(p.name)}</b>
-                <small>${esc(
-                  [p.category, p.make, p.model]
-                    .filter(Boolean)
-                    .join(" · ")
-                )}</small>
+                <small>${esc([p.category, p.make, p.model].filter(Boolean).join(' · '))}</small>
               </div>
             </div>
           </td>
-          <td>${esc(p.oem || "—")}</td>
+          <td>${esc(p.oem || '—')}</td>
           <td><b>${money(p.price)}</b></td>
-          <td>
-            <span class="table-status ${esc(p.status)}">
-              ${statusText(p.status)}
-            </span>
-          </td>
+          <td><span class="table-status ${statusClass(p.status)}">${statusText(p.status)}</span></td>
           <td>
             <div class="table-actions">
-              <button class="small-action"
-                data-edit="${esc(p.id)}">Edytuj</button>
-              <button class="small-action delete"
-                data-delete="${esc(p.id)}">Usuń</button>
+              <button class="small-action" data-edit="${esc(p.id)}">Edytuj</button>
+              <button class="small-action delete" data-delete="${esc(p.id)}">Usuń</button>
             </div>
-          </td>
-        `;
-
+          </td>`;
         body.appendChild(tr);
       });
 
     if (!body.children.length) {
-      body.innerHTML =
-        '<tr><td colspan="5">Brak części do wyświetlenia.</td></tr>';
+      body.innerHTML = '<tr><td colspan="5">Brak części do wyświetlenia.</td></tr>';
     }
   }
 
   function resetForm() {
-    $("product-form").reset();
-    $("product-id").value = "";
-    currentImageUrl = "";
-
-    $("current-image").hidden = true;
-    $("current-image").innerHTML = "";
-
-    $("form-title").textContent = "Dodaj nową część";
-    $("save-product").textContent = "Zapisz część";
-    $("cancel-edit").hidden = true;
-
-    message("form-message", "");
+    $('product-form').reset();
+    $('product-id').value = '';
+    currentImageUrl = '';
+    currentImagePath = '';
+    $('current-image').hidden = true;
+    $('current-image').innerHTML = '';
+    $('form-title').textContent = 'Dodaj nową część';
+    $('save-product').textContent = 'Zapisz część';
+    $('cancel-edit').hidden = true;
+    message('form-message', '');
   }
 
-  function edit(product) {
-    $("product-id").value = product.id;
-    $("p-name").value = product.name || "";
-    $("p-category").value = product.category || "";
-    $("p-make").value = product.make || "";
-    $("p-model").value = product.model || "";
-    $("p-years").value = product.years || "";
-    $("p-oem").value = product.oem || "";
-    $("p-price").value = product.price ?? "";
-    $("p-status").value = product.status || "available";
-    $("p-description").value = product.description || "";
+  function edit(p) {
+    $('product-id').value = p.id;
+    $('p-name').value = p.name || '';
+    $('p-category').value = p.category || '';
+    $('p-make').value = p.make || '';
+    $('p-model').value = p.model || '';
+    $('p-years').value = p.years || '';
+    $('p-oem').value = p.oem || '';
+    $('p-price').value = p.price ?? '';
+    $('p-status').value = statusClass(p.status);
+    $('p-description').value = p.description || '';
 
-    currentImageUrl = product.image_url || "";
+    currentImageUrl = p.image_url || '';
+    currentImagePath = extractStoragePath(currentImageUrl);
 
-    $("current-image").hidden = !currentImageUrl;
-    $("current-image").innerHTML = currentImageUrl
-      ? `<img src="${esc(currentImageUrl)}" alt="Aktualne zdjęcie">`
-      : "";
+    $('current-image').hidden = !currentImageUrl;
+    $('current-image').innerHTML = currentImageUrl
+      ? `<img src="${esc(currentImageUrl)}" alt="Aktualne zdjęcie"><span>Aktualne zdjęcie</span>`
+      : '';
 
-    $("form-title").textContent = "Edytuj część";
-    $("save-product").textContent = "Zapisz zmiany";
-    $("cancel-edit").hidden = false;
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    $('form-title').textContent = 'Edytuj część';
+    $('save-product').textContent = 'Zapisz zmiany';
+    $('cancel-edit').hidden = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function uploadImage(file) {
     if (!file) return currentImageUrl;
-
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      throw new Error("Wybierz zdjęcie JPG, PNG lub WebP.");
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      throw new Error('Wybierz zdjęcie JPG, PNG lub WebP.');
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      throw new Error('Zdjęcie jest za duże. Maksymalny rozmiar to 5 MB.');
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      throw new Error("Zdjęcie jest za duże. Maksymalny rozmiar to 5 MB.");
-    }
+    const ext = file.type === 'image/png' ? 'png'
+              : file.type === 'image/webp' ? 'webp'
+              : 'jpg';
 
-    const ext = file.type === "image/png"
-      ? "png"
-      : file.type === "image/webp"
-        ? "webp"
-        : "jpg";
-
-    const path = `${crypto.randomUUID()}.${ext}`;
-
+    const path = `${uuid()}.${ext}`;
     const { error } = await client.storage
-      .from("product-images")
-      .upload(path, file, {
-        upsert: false,
-        contentType: file.type
-      });
-
+      .from('product-images')
+      .upload(path, file, { upsert: false, contentType: file.type });
     if (error) throw error;
 
-    const { data } = client.storage
-      .from("product-images")
-      .getPublicUrl(path);
-
+    const { data } = client.storage.from('product-images').getPublicUrl(path);
     return data.publicUrl;
   }
 
-  $("login-form").addEventListener("submit", async event => {
-    event.preventDefault();
-
+  $('login-form').addEventListener('submit', async e => {
+    e.preventDefault();
     if (!client) {
-      message(
-        "login-message",
-        "Sprawdź konfigurację Supabase w config.js.",
-        "error"
-      );
+      message('login-message', 'Najpierw uzupełnij config.js i wykonaj instrukcję README.', 'error');
       return;
     }
-
-    const button = $("login-form").querySelector(
-      'button[type="submit"]'
-    );
-
-    button.disabled = true;
-    message("login-message", "Logowanie…");
-
-    try {
-      const { data, error } = await client.auth.signInWithPassword({
-        email: $("email").value.trim(),
-        password: $("password").value
-      });
-
-      if (error) throw error;
-
-      if (!data.session) {
-        throw new Error("Nie udało się utworzyć sesji.");
-      }
-
-      message("login-message", "");
-      showUser(data.user);
-    } catch (error) {
-      message(
-        "login-message",
-        "Nie udało się zalogować: " + error.message,
-        "error"
-      );
-    } finally {
-      button.disabled = false;
+    message('login-message', 'Logowanie…');
+    const { error } = await client.auth.signInWithPassword({
+      email: $('email').value,
+      password: $('password').value
+    });
+    if (error) {
+      message('login-message', 'Nie udało się zalogować. Sprawdź e-mail i hasło.', 'error');
+      return;
     }
+    message('login-message', '');
   });
 
-  $("logout").addEventListener("click", async () => {
-    if (!client) return;
-
-    const { error } = await client.auth.signOut();
-
-    if (error) {
-      message(
-        "inventory-message",
-        "Nie udało się wylogować: " + error.message,
-        "error"
-      );
-      return;
-    }
-
+  $('logout').addEventListener('click', async () => {
+    await client.auth.signOut();
     showUser(null);
   });
 
-  $("cancel-edit").addEventListener("click", resetForm);
-  $("admin-search").addEventListener("input", renderInventory);
+  $('cancel-edit').addEventListener('click', resetForm);
+  $('admin-search').addEventListener('input', renderInventory);
 
-  $("product-form").addEventListener("submit", async event => {
-    event.preventDefault();
+  $('product-form').addEventListener('submit', async e => {
+    e.preventDefault();
     if (!client) return;
 
-    const button = $("save-product");
-    button.disabled = true;
-    message("form-message", "Zapisywanie…");
+    const btn = $('save-product');
+    btn.disabled = true;
+    message('form-message', 'Zapisywanie…');
 
     try {
-      const image_url = await uploadImage(
-        $("p-image").files[0]
-      );
+      const oldImageUrl = currentImageUrl;
+      const image_url = await uploadImage($('p-image').files[0]);
 
       const payload = {
-        name: $("p-name").value.trim(),
-        category: $("p-category").value.trim(),
-        make: $("p-make").value.trim() || null,
-        model: $("p-model").value.trim() || null,
-        years: $("p-years").value.trim() || null,
-        oem: $("p-oem").value.trim() || null,
-        price: Number($("p-price").value),
-        status: $("p-status").value,
-        description: $("p-description").value.trim() || null,
+        name: $('p-name').value.trim(),
+        category: $('p-category').value.trim(),
+        make: $('p-make').value.trim() || null,
+        model: $('p-model').value.trim() || null,
+        years: $('p-years').value.trim() || null,
+        oem: $('p-oem').value.trim() || null,
+        price: Number($('p-price').value),
+        status: statusClass($('p-status').value),
+        description: $('p-description').value.trim() || null,
         image_url: image_url || null
       };
 
-      const id = $("product-id").value;
-
+      const id = $('product-id').value;
       const result = id
-        ? await client
-            .from("products")
-            .update(payload)
-            .eq("id", id)
-            .select()
-            .single()
-        : await client
-            .from("products")
-            .insert(payload)
-            .select()
-            .single();
+        ? await client.from('products').update(payload).eq('id', id).select().single()
+        : await client.from('products').insert(payload).select().single();
 
       if (result.error) throw result.error;
 
-      message(
-        "form-message",
-        id ? "Zmiany zapisane." : "Część została dodana.",
-        "success"
-      );
+      if (id && oldImageUrl && oldImageUrl !== image_url) {
+        await deleteOldImage(oldImageUrl, image_url);
+      }
 
+      message('form-message', id ? 'Zmiany zapisane.' : 'Część została dodana.', 'success');
       resetForm();
       await refresh();
-    } catch (error) {
-      message(
-        "form-message",
-        "Nie udało się zapisać: " + error.message,
-        "error"
-      );
+    } catch (err) {
+      message('form-message', 'Nie udało się zapisać: ' + (err.message || 'nieznany błąd'), 'error');
     } finally {
-      button.disabled = false;
+      btn.disabled = false;
     }
   });
 
-  $("inventory-body").addEventListener("click", async event => {
-    const editId = event.target.closest("[data-edit]")?.dataset.edit;
-    const deleteId = event.target.closest("[data-delete]")?.dataset.delete;
+  $('inventory-body').addEventListener('click', async e => {
+    const editId = e.target.closest('[data-edit]')?.dataset.edit;
+    const deleteId = e.target.closest('[data-delete]')?.dataset.delete;
 
     if (editId) {
-      const product = products.find(p => p.id === editId);
-      if (product) edit(product);
+      const p = products.find(x => x.id === editId);
+      if (p) edit(p);
     }
 
     if (deleteId) {
-      const product = products.find(p => p.id === deleteId);
+      const p = products.find(x => x.id === deleteId);
+      if (!p || !confirm(`Usunąć część „${p.name}”? Tej operacji nie można cofnąć.`)) return;
 
-      if (
-        !product ||
-        !confirm(`Usunąć część „${product.name}”? Tej operacji nie można cofnąć.`)
-      ) {
-        return;
-      }
-
-      const { error } = await client
-        .from("products")
-        .delete()
-        .eq("id", deleteId);
-
+      const { error } = await client.from('products').delete().eq('id', deleteId);
       if (error) {
-        message(
-          "inventory-message",
-          "Nie udało się usunąć części: " + error.message,
-          "error"
-        );
+        message('inventory-message', 'Nie udało się usunąć części: ' + error.message, 'error');
         return;
       }
 
-      message("inventory-message", "Część została usunięta.", "success");
-      await refresh();
+      if (p.image_url) {
+        await deleteOldImage(p.image_url, null);
+      }
+
+      message('inventory-message', 'Część została usunięta.', 'success');
+      refresh();
     }
   });
 
-  if (!configured || !window.supabase) {
-    $("setup-warning").hidden = false;
-    $("setup-warning").textContent =
-      "Sprawdź SUPABASE_URL i SUPABASE_ANON_KEY w config.js.";
+  if (!configured) {
+    warning.hidden = false;
+    warning.textContent = 'Konfiguracja nie jest gotowa. Uzupełnij SUPABASE_URL i SUPABASE_ANON_KEY w config.js, a następnie wykonaj kroki z pliku README.md.';
+    $('login-panel').hidden = false;
   } else {
-    client.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT") {
-        showUser(null);
-      } else if (session?.user) {
-        showUser(session.user);
-      } else if (authStateReady) {
-        showUser(null);
-      }
+    client.auth.onAuthStateChange((_event, session) => {
+      showUser(session?.user || null);
     });
-
-    client.auth.getSession()
-      .then(({ data, error }) => {
-        authStateReady = true;
-
-        if (error) {
-          showUser(null);
-          return;
-        }
-
-        showUser(data.session?.user || null);
-      })
-      .catch(() => {
-        authStateReady = true;
-        showUser(null);
-      });
   }
 })();
