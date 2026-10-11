@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="description" content="Używane części samochodowe. Wyszukaj część i skontaktuj się z nami przez WhatsApp lub telefon.">
+  <meta name="description" content="Używane części samochodowe. Wyszukaj część i skontaktuj się z nami przez WhatsApp, telefon lub e-mail.">
   <title>ARVORN Auto Parts — używane części samochodowe</title>
 
   <link rel="stylesheet" href="styles.css">
@@ -12,296 +12,45 @@
   <script defer src="app.js"></script>
 
   <style>
-    .product-card {
-      cursor: pointer;
-    }
-
-    .product-card .product-contact {
-      cursor: pointer;
-    }
-
-    .product-actions {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-top: 14px;
-    }
-
-    .product-details-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px 14px;
-      border: 1px solid #d7dedb;
-      border-radius: 6px;
-      background: #fff;
-      color: #202925;
-      font: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .product-details-button:hover {
-      background: #f0f3f1;
-    }
-
-    /* Modal: osobna warstwa nad całym katalogiem */
-    .product-modal[hidden] {
-      display: none !important;
-    }
-
-    .product-modal {
-      position: fixed !important;
-      inset: 0 !important;
-      z-index: 2147483000 !important;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: max(8px, env(safe-area-inset-top))
-               max(8px, env(safe-area-inset-right))
-               max(8px, env(safe-area-inset-bottom))
-               max(8px, env(safe-area-inset-left));
-      background: rgba(15, 22, 19, .76);
-      overflow: hidden;
-      box-sizing: border-box;
-      isolation: isolate;
-    }
-
-    .product-modal-dialog {
-      position: relative;
-      width: 100%;
-      max-width: 760px;
-      height: auto;
-      max-height: 100%;
-      overflow: auto;
-      overscroll-behavior: contain;
-      -webkit-overflow-scrolling: touch;
-      background: #fff;
-      color: #202925;
-      border-radius: 12px;
-      box-shadow: 0 20px 70px rgba(0, 0, 0, .3);
-      box-sizing: border-box;
-    }
-
-    /*
-      Pasek zamykania jest częścią okna dialogowego,
-      ale nie przewija się razem z jego zawartością.
-    */
-    .product-modal-topbar {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      height: 58px;
-      min-height: 58px;
-      padding: 8px 10px;
-      background: rgba(255, 255, 255, .98);
-      border-bottom: 1px solid #edf0ee;
-      box-sizing: border-box;
-    }
-
-    .product-modal-close {
-      position: relative !important;
-      inset: auto !important;
-      float: none !important;
-      z-index: 101 !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      flex: 0 0 42px;
-      width: 42px !important;
-      height: 42px !important;
-      min-width: 42px !important;
-      min-height: 42px !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border: 0 !important;
-      border-radius: 50% !important;
-      background: #edf0ee !important;
-      color: #202925 !important;
-      font-family: Arial, sans-serif !important;
-      font-size: 29px !important;
-      font-weight: 400 !important;
-      line-height: 1 !important;
-      text-align: center !important;
-      box-sizing: border-box !important;
-      appearance: none;
-      -webkit-appearance: none;
-      cursor: pointer;
-    }
-
-    .product-modal-close:hover {
-      background: #dfe5e1 !important;
-    }
-
-    .product-modal-content {
-      padding: 24px;
-      box-sizing: border-box;
-    }
-
-    .product-modal-main {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 24px;
-      margin-bottom: 24px;
-    }
-
-    .product-modal-image {
-      display: block;
-      width: 100%;
-      aspect-ratio: 4 / 3;
-      object-fit: contain;
-      background: #f1f3f2;
-      border-radius: 8px;
-    }
-
-    .product-modal-category {
-      margin: 0 0 8px;
-      color: #66716b;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-    }
-
-    .product-modal-title {
-      margin: 0 0 12px;
-      font-size: clamp(22px, 4vw, 30px);
-      line-height: 1.2;
-      overflow-wrap: anywhere;
-    }
-
-    .product-modal-fitment {
-      margin-bottom: 10px;
-      color: #4f5b54;
-    }
-
-    .product-modal-oem {
-      margin-bottom: 12px;
-      font-size: 14px;
-      overflow-wrap: anywhere;
-    }
-
-    .product-modal-price {
-      margin: 16px 0;
-      font-size: 26px;
-      font-weight: 700;
-    }
-
-    .product-modal-description {
-      margin-top: 16px;
-      white-space: pre-wrap;
-      line-height: 1.6;
-      overflow-wrap: anywhere;
-    }
-
-    .product-vehicle {
-      padding: 18px;
-      border: 1px solid #e0e5e2;
-      border-radius: 8px;
-      background: #f8f9f8;
-      overflow-wrap: anywhere;
-    }
-
-    .product-vehicle h3 {
-      margin: 0 0 14px;
-      font-size: 18px;
-    }
-
-    .vehicle-number {
-      margin-bottom: 14px;
-      padding: 12px;
-      background: #e9eeeb;
-      border-radius: 6px;
-      line-height: 1.5;
-      overflow-wrap: anywhere;
-    }
-
-    .vehicle-detail-list {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0 20px;
-    }
-
-    .vehicle-detail-row {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 10px 0;
-      border-bottom: 1px solid #e1e5e2;
-      overflow-wrap: anywhere;
-    }
-
-    .vehicle-detail-row span {
-      color: #68736c;
-      font-size: 12px;
-    }
-
-    .vehicle-detail-row strong {
-      font-size: 14px;
-      overflow-wrap: anywhere;
-    }
-
-    .product-modal-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .product-modal-actions a {
-      text-decoration: none;
-      text-align: center;
-    }
-
-    body.modal-open {
-      overflow: hidden !important;
-    }
-
-    @media (max-width: 560px) {
-      .product-modal {
-        padding: 0;
-        align-items: stretch;
-      }
-
-      .product-modal-dialog {
-        width: 100%;
-        max-width: none;
-        height: 100%;
-        height: 100dvh;
-        max-height: 100%;
-        border-radius: 0;
-      }
-
-      .product-modal-topbar {
-        height: 58px;
-        min-height: 58px;
-        padding: 8px 12px;
-      }
-
-      .product-modal-content {
-        padding: 16px;
-      }
-
-      .product-modal-main {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 16px;
-      }
-
-      .product-modal-image {
-        max-height: 260px;
-      }
-
-      .vehicle-detail-list {
-        grid-template-columns: minmax(0, 1fr);
-      }
-
-      .product-vehicle {
-        padding: 14px;
-      }
+    .product-card{cursor:pointer}
+    .product-card .product-contact{cursor:pointer}
+    .product-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+    .product-details-button{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border:1px solid #d7dedb;border-radius:6px;background:#fff;color:#202925;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+    .product-details-button:hover{background:#f0f3f1}
+    .product-modal[hidden]{display:none!important}
+    .product-modal{position:fixed!important;inset:0!important;z-index:2147483000!important;display:flex;align-items:center;justify-content:center;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));background:rgba(15,22,19,.76);overflow:hidden;box-sizing:border-box;isolation:isolate}
+    .product-modal-dialog{position:relative;width:100%;max-width:760px;height:auto;max-height:100%;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#fff;color:#202925;border-radius:12px;box-shadow:0 20px 70px rgba(0,0,0,.3);box-sizing:border-box}
+    .product-modal-topbar{position:sticky;top:0;z-index:100;display:flex;justify-content:flex-end;align-items:center;height:58px;min-height:58px;padding:8px 10px;background:rgba(255,255,255,.98);border-bottom:1px solid #edf0ee;box-sizing:border-box}
+    .product-modal-close{position:relative!important;inset:auto!important;float:none!important;z-index:101!important;display:flex!important;align-items:center!important;justify-content:center!important;flex:0 0 42px;width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;margin:0!important;padding:0!important;border:0!important;border-radius:50%!important;background:#edf0ee!important;color:#202925!important;font-family:Arial,sans-serif!important;font-size:29px!important;font-weight:400!important;line-height:1!important;text-align:center!important;box-sizing:border-box!important;appearance:none;-webkit-appearance:none;cursor:pointer}
+    .product-modal-close:hover{background:#dfe5e1!important}
+    .product-modal-content{padding:24px;box-sizing:border-box}
+    .product-modal-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;margin-bottom:24px}
+    .product-modal-image{display:block;width:100%;aspect-ratio:4/3;object-fit:contain;background:#f1f3f2;border-radius:8px}
+    .product-modal-category{margin:0 0 8px;color:#66716b;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+    .product-modal-title{margin:0 0 12px;font-size:clamp(22px,4vw,30px);line-height:1.2;overflow-wrap:anywhere}
+    .product-modal-fitment{margin-bottom:10px;color:#4f5b54}
+    .product-modal-oem{margin-bottom:12px;font-size:14px;overflow-wrap:anywhere}
+    .product-modal-price{margin:16px 0;font-size:26px;font-weight:700}
+    .product-modal-description{margin-top:16px;white-space:pre-wrap;line-height:1.6;overflow-wrap:anywhere}
+    .product-vehicle{padding:18px;border:1px solid #e0e5e2;border-radius:8px;background:#f8f9f8;overflow-wrap:anywhere}
+    .product-vehicle h3{margin:0 0 14px;font-size:18px}
+    .vehicle-number{margin-bottom:14px;padding:12px;background:#e9eeeb;border-radius:6px;line-height:1.5;overflow-wrap:anywhere}
+    .vehicle-detail-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}
+    .vehicle-detail-row{display:flex;flex-direction:column;gap:4px;padding:10px 0;border-bottom:1px solid #e1e5e2;overflow-wrap:anywhere}
+    .vehicle-detail-row span{color:#68736c;font-size:12px}
+    .vehicle-detail-row strong{font-size:14px;overflow-wrap:anywhere}
+    .product-modal-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+    .product-modal-actions a{text-decoration:none;text-align:center}
+    body.modal-open{overflow:hidden!important}
+    @media(max-width:560px){
+      .product-modal{padding:0;align-items:stretch}
+      .product-modal-dialog{width:100%;max-width:none;height:100%;height:100dvh;max-height:100%;border-radius:0}
+      .product-modal-topbar{height:58px;min-height:58px;padding:8px 12px}
+      .product-modal-content{padding:16px}
+      .product-modal-main{grid-template-columns:minmax(0,1fr);gap:16px}
+      .product-modal-image{max-height:260px}
+      .vehicle-detail-list{grid-template-columns:minmax(0,1fr)}
+      .product-vehicle{padding:14px}
     }
   </style>
 </head>
@@ -312,7 +61,12 @@
     <span class="brand-mark">A</span>
     <span><b>ARVORN</b><small>AUTO PARTS</small></span>
   </a>
-  <a class="admin-link" href="admin.html">Panel administratora ↗</a>
+
+  <nav class="header-actions" aria-label="Kontakt">
+    <a class="header-contact header-whatsapp" href="https://wa.me/48726579717" target="_blank" rel="noopener">WhatsApp ↗</a>
+    <a class="header-contact header-phone" href="tel:+48726579717">Zadzwoń</a>
+    <a class="admin-link" href="admin.html">Panel administratora ↗</a>
+  </nav>
 </header>
 
 <main>
@@ -363,15 +117,28 @@
     </div>
   </section>
 
-  <section class="contact-band">
-    <div>
+  <section class="contact-band" id="contact">
+    <div class="contact-copy">
       <span class="eyebrow">NIE WIDZISZ TEGO, CZEGO SZUKASZ?</span>
       <h2>Zapytaj o część.</h2>
-      <p>Mamy szeroki wybór części używanych. Wyślij numer OEM, model auta lub zdjęcie części.</p>
+      <p>Mamy szeroki wybór części używanych. Wyślij numer OEM, model auta lub zdjęcie części. Skontaktuj się z nami przez WhatsApp, telefon lub e-mail.</p>
     </div>
-    <div class="contact-actions">
-      <a class="button button-green" id="whatsapp-cta" href="#">WhatsApp ↗</a>
-      <a class="button button-outline" id="phone-cta" href="#">Zadzwoń</a>
+
+    <div class="contact-panel">
+      <a class="button button-green" id="whatsapp-cta" href="https://wa.me/48726579717" target="_blank" rel="noopener">
+        <span class="contact-icon">↗</span>
+        <span>WhatsApp<small>Napisz wiadomość</small></span>
+      </a>
+
+      <a class="button button-outline" id="phone-cta" href="tel:+48726579717">
+        <span class="contact-icon">☎</span>
+        <span>Zadzwoń<small>+48 726 579 717</small></span>
+      </a>
+
+      <a class="button button-outline" id="email-cta" href="mailto:triplparts@gmail.com">
+        <span class="contact-icon">✉</span>
+        <span>E-mail<small>triplparts@gmail.com</small></span>
+      </a>
     </div>
   </section>
 </main>
@@ -409,11 +176,9 @@
 
 <div id="product-modal" class="product-modal" hidden aria-hidden="true">
   <div class="product-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-product-name">
-
     <div class="product-modal-topbar">
       <button type="button" id="product-modal-close" class="product-modal-close" aria-label="Zamknij">×</button>
     </div>
-
     <div id="product-modal-content" class="product-modal-content"></div>
   </div>
 </div>
