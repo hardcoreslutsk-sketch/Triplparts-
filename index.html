@@ -1,122 +1,14 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="TRIPL PARTS — używane części samochodowe w Polsce. Wyszukaj część i zapytaj o dostępność.">
-  <meta name="theme-color" content="#ffffff">
-  <title>TRIPL PARTS — używane części samochodowe</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>TRIPL PARTS — Części samochodowe</title>
+  <meta name="description" content="TRIPL PARTS — używane części samochodowe. Sprawdź dostępne części i skontaktuj się z nami.">
+  <meta name="theme-color" content="#101010">
 
   <link rel="stylesheet" href="styles.css">
-
-  <style>
-    /* Tekstowy znak firmowy — bez pliku graficznego i bez logo. */
-    .brand-mark {
-      display: none !important;
-    }
-
-    .topbar {
-      gap: 18px;
-    }
-
-    .brand {
-      flex: 0 0 auto;
-    }
-
-    .brand b {
-      font-size: clamp(14px, 2vw, 19px);
-      letter-spacing: .08em;
-    }
-
-    .topbar-actions {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 12px;
-      position: relative;
-    }
-
-    .contact-toggle {
-      border: 1px solid #d8e0df;
-      background: #fff;
-      color: var(--ink);
-      font-size: 14px;
-      padding: 12px 18px;
-      border-radius: 14px;
-      white-space: nowrap;
-    }
-
-    .contact-options {
-      position: absolute;
-      z-index: 20;
-      top: calc(100% + 10px);
-      right: 0;
-      width: min(260px, calc(100vw - 32px));
-      padding: 10px;
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      box-shadow: 0 12px 34px #15212a1f;
-    }
-
-    .contact-options[hidden] {
-      display: none !important;
-    }
-
-    .contact-options a {
-      display: block;
-      padding: 12px 13px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 700;
-    }
-
-    .contact-options a:hover {
-      background: var(--paper);
-    }
-
-    .admin-link {
-      white-space: nowrap;
-    }
-
-    @media (max-width: 720px) {
-      .topbar {
-        height: auto;
-        min-height: 66px;
-        padding: 12px 16px;
-        gap: 10px;
-      }
-
-      .topbar-actions {
-        gap: 8px;
-      }
-
-      .contact-toggle {
-        padding: 10px 12px;
-        font-size: 12px;
-      }
-
-      .admin-link {
-        font-size: 10px;
-      }
-
-      .brand small {
-        letter-spacing: .16em;
-      }
-    }
-
-    @media (max-width: 390px) {
-      .topbar {
-        align-items: flex-start;
-        flex-wrap: wrap;
-      }
-
-      .topbar-actions {
-        width: 100%;
-        justify-content: space-between;
-      }
-    }
-  </style>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
@@ -124,219 +16,165 @@
 </head>
 
 <body>
-  <header class="topbar">
-    <a class="brand" href="./" aria-label="TRIPL PARTS — strona główna">
-      <span>
-        <b>TRIPL PARTS</b>
-        <small>USED AUTO PARTS</small>
-      </span>
-    </a>
-
-    <div class="topbar-actions">
-      <button
-        class="button contact-toggle"
-        type="button"
-        id="contact-toggle"
-        aria-expanded="false"
-        aria-controls="contact-options">
-        ✉&nbsp; Kontakty
-      </button>
-
-      <a class="admin-link" href="admin.html">
-        Panel administratora ↗
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html" aria-label="TRIPL PARTS — strona główna">
+        <span class="brand-name">TRIPL PARTS</span>
+        <span class="brand-caption">USED CAR PARTS</span>
       </a>
 
-      <div class="contact-options" id="contact-options" hidden>
-        <a
-          id="whatsapp-cta"
-          href="https://wa.me/48726579717"
-          target="_blank"
-          rel="noopener">
-          WhatsApp ↗
-        </a>
-
-        <a id="phone-cta" href="tel:+48726579717">
-          Zadzwoń
-        </a>
-
-        <a id="email-cta" href="mailto:triplparts@gmail.com">
-          E-mail: triplparts@gmail.com
-        </a>
-      </div>
+      <nav class="header-nav">
+        <a href="#catalog">Katalog części</a>
+        <a href="#contact">Kontakt</a>
+        <a class="admin-link" href="admin.html">Panel administratora</a>
+      </nav>
     </div>
   </header>
 
   <main>
     <section class="hero">
-      <div class="hero-copy">
-        <span class="eyebrow">UŻYWANE CZĘŚCI • POLSKA</span>
+      <div class="container hero-inner">
+        <div class="hero-content">
+          <span class="eyebrow">TRIPL PARTS / AUTO PARTS</span>
 
-        <h1>
-          Dobra część.<br>
-          <em>Rozsądna cena.</em>
-        </h1>
+          <h1>Części samochodowe.<br><span>Bez zbędnych komplikacji.</span></h1>
 
-        <p>
-          Sprawdź dostępność używanych części samochodowych.
-          Masz numer OEM? Wpisz go i znajdź właściwą część.
-        </p>
+          <p>
+            Sprawdź dostępne części, wyszukaj odpowiedni model
+            i skontaktuj się z nami, aby uzyskać szczegóły.
+          </p>
 
-        <a class="button button-light" href="#catalog">
-          Przeglądaj katalog <span>↓</span>
-        </a>
-      </div>
-
-      <div class="hero-art" aria-hidden="true">
-        <div class="ring ring-one"></div>
-        <div class="ring ring-two"></div>
-        <div class="hero-label">
-          USED<br>
-          PARTS<br>
-          <strong>PL</strong>
+          <a class="button button-primary" href="#catalog">
+            Przeglądaj części <span aria-hidden="true">↘</span>
+          </a>
         </div>
-        <div class="hero-cross">✳</div>
+
+        <div class="hero-side" aria-hidden="true">
+          <span class="hero-side-number">TP</span>
+          <span class="hero-side-line"></span>
+          <span class="hero-side-caption">PARTS. QUALITY. SERVICE.</span>
+        </div>
       </div>
     </section>
 
     <section class="catalog-section" id="catalog">
-      <div class="section-heading">
-        <div>
-          <span class="eyebrow dark-eyebrow">NASZ ASORTYMENT</span>
-          <h2>Znajdź swoją część</h2>
+      <div class="container">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">NASZA OFERTA</span>
+            <h2>Katalog części</h2>
+            <p>Znajdź część dopasowaną do swojego samochodu.</p>
+          </div>
+
+          <div class="results-counter">
+            <span id="results-count">—</span>
+            <span class="counter-caption">DOSTĘPNE CZĘŚCI</span>
+          </div>
         </div>
 
-        <span class="results-count" id="results-count">
-          Ładowanie katalogu…
-        </span>
-      </div>
+        <div class="catalog-toolbar">
+          <div class="search-field">
+            <label for="search">Wyszukiwanie</label>
+            <input
+              id="search"
+              type="search"
+              placeholder="Nazwa, model, numer OEM..."
+              autocomplete="off"
+            >
+          </div>
 
-      <div class="search-row">
-        <label class="searchbox">
-          <span>⌕</span>
-          <input
-            id="search"
-            type="search"
-            placeholder="Szukaj części, OEM, marki lub modelu…"
-            autocomplete="off">
-        </label>
+          <div class="filter-field">
+            <label for="category-filter">Kategoria</label>
+            <select id="category-filter">
+              <option value="">Wszystkie kategorie</option>
+            </select>
+          </div>
 
-        <select id="category-filter" aria-label="Kategoria">
-          <option value="">Wszystkie kategorie</option>
-        </select>
+          <div class="filter-field">
+            <label for="make-filter">Marka</label>
+            <select id="make-filter">
+              <option value="">Wszystkie marki</option>
+            </select>
+          </div>
+        </div>
 
-        <select id="make-filter" aria-label="Marka">
-          <option value="">Wszystkie marki</option>
-        </select>
-      </div>
+        <div id="catalog-status" class="catalog-status" role="status" aria-live="polite">
+          Ładowanie katalogu...
+        </div>
 
-      <div id="catalog-status" class="notice" hidden></div>
+        <div id="product-grid" class="product-grid"></div>
 
-      <div id="product-grid" class="product-grid"></div>
-
-      <div id="empty-state" class="empty-state" hidden>
-        <div class="empty-icon">⌕</div>
-        <h3>Nie znaleziono części</h3>
-        <p>
-          Spróbuj zmienić wyszukiwaną frazę lub skontaktuj się z nami.
-        </p>
+        <div id="empty-state" class="empty-state" hidden>
+          <span class="empty-icon" aria-hidden="true">⌕</span>
+          <h3>Nie znaleziono części</h3>
+          <p>Spróbuj zmienić wyszukiwanie lub wybrać inną kategorię.</p>
+        </div>
       </div>
     </section>
 
-    <section class="contact-band">
-      <div>
-        <span class="eyebrow">NIE WIDZISZ TEGO, CZEGO SZUKASZ?</span>
-        <h2>Zapytaj o część.</h2>
-        <p>
-          Mamy szeroki wybór części używanych.
-          Wyślij numer OEM, model auta lub zdjęcie części.
-        </p>
-      </div>
+    <section class="contact-section" id="contact">
+      <div class="container contact-inner">
+        <div>
+          <span class="eyebrow">MASZ PYTANIA?</span>
+          <h2>Szukasz konkretnej części?</h2>
+          <p>
+            Skontaktuj się z nami. Podaj markę, model samochodu
+            oraz numer OEM, jeśli go znasz.
+          </p>
+        </div>
 
-      <div class="contact-actions">
-        <a
-          class="button button-green"
-          href="https://wa.me/48726579717"
-          target="_blank"
-          rel="noopener">
-          WhatsApp ↗
-        </a>
+        <div class="contact-actions">
+          <a
+            class="button button-primary"
+            href="https://wa.me/48726579717"
+            target="_blank"
+            rel="noopener noreferrer"
+          >WhatsApp ↗</a>
 
-        <a class="button button-outline" href="tel:+48726579717">
-          Zadzwoń
-        </a>
+          <a class="button button-secondary" href="tel:+48726579717">
+            Zadzwoń
+          </a>
+
+          <a class="contact-email" href="mailto:triplparts@gmail.com">
+            triplparts@gmail.com
+          </a>
+        </div>
       </div>
     </section>
   </main>
 
-  <footer>
-    <a class="brand brand-footer" href="./">
-      <span>
-        <b>TRIPL PARTS</b>
-        <small>USED AUTO PARTS</small>
-      </span>
-    </a>
-
-    <p>Używane części samochodowe · Polska</p>
-
-    <small>
-      Przed zakupem potwierdź dostępność i zgodność części z pojazdem.
-    </small>
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <a class="footer-brand" href="index.html">TRIPL PARTS</a>
+      <span>Używane części samochodowe</span>
+      <span>© <span id="current-year">2026</span> TRIPL PARTS</span>
+    </div>
   </footer>
 
   <template id="product-template">
     <article class="product-card">
       <div class="product-image-wrap">
-        <img class="product-image" alt="" loading="lazy">
-        <span class="stock-badge"></span>
+        <img class="product-image" src="" alt="" loading="lazy">
+        <span class="stock-badge">Dostępny</span>
       </div>
 
-      <div class="product-info">
-        <div class="product-category"></div>
+      <div class="product-card-content">
+        <span class="product-category"></span>
         <h3 class="product-name"></h3>
-        <div class="product-fitment"></div>
-        <div class="product-oem"></div>
+        <p class="product-fitment"></p>
+        <p class="product-oem"></p>
 
-        <div class="product-bottom">
-          <strong class="product-price"></strong>
-          <a class="product-contact" target="_blank" rel="noopener">
-            Zapytaj ↗
-          </a>
+        <div class="product-card-bottom">
+          <span class="product-price"></span>
+          <a class="product-contact" href="#contact">Zapytaj ↗</a>
         </div>
       </div>
     </article>
   </template>
 
   <script>
-    (() => {
-      const toggle = document.getElementById('contact-toggle');
-      const panel = document.getElementById('contact-options');
-
-      if (!toggle || !panel) return;
-
-      toggle.addEventListener('click', () => {
-        const willOpen = panel.hidden;
-        panel.hidden = !willOpen;
-        toggle.setAttribute('aria-expanded', String(willOpen));
-      });
-
-      document.addEventListener('click', event => {
-        if (
-          !panel.hidden &&
-          !panel.contains(event.target) &&
-          !toggle.contains(event.target)
-        ) {
-          panel.hidden = true;
-          toggle.setAttribute('aria-expanded', 'false');
-        }
-      });
-
-      document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') {
-          panel.hidden = true;
-          toggle.setAttribute('aria-expanded', 'false');
-        }
-      });
-    })();
+    document.getElementById("current-year").textContent =
+      new Date().getFullYear();
   </script>
 </body>
 </html>
