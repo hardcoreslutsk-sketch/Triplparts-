@@ -211,71 +211,107 @@
     if (!modal) {
       modal = document.createElement("div");
       modal.id = "product-modal";
+      modal.className = "product-modal";
+      modal.hidden = true;
+      modal.setAttribute("aria-hidden", "true");
+
       modal.innerHTML = `
-        <div class="product-modal-dialog" role="dialog" aria-modal="true">
-          <button type="button" id="product-modal-close" aria-label="Zamknij">×</button>
-          <div id="product-modal-content"></div>
+        <div class="product-modal-dialog"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="modal-product-name">
+          <div class="product-modal-topbar">
+            <button type="button"
+                    id="product-modal-close"
+                    class="product-modal-close"
+                    aria-label="Zamknij">×</button>
+          </div>
+          <div id="product-modal-content"
+               class="product-modal-content"></div>
         </div>
       `;
+
       document.body.appendChild(modal);
     }
+
+    const dialog = modal.querySelector(".product-modal-dialog");
+    const topbar = modal.querySelector(".product-modal-topbar");
+    const close = $("product-modal-close");
+    const content = $("product-modal-content");
+
+    /*
+      Не используем position: fixed для крестика.
+      Кнопка находится в отдельной липкой верхней панели.
+      Панель не прокручивается вместе с деталями товара.
+    */
 
     Object.assign(modal.style, {
       position: "fixed",
       inset: "0",
-      zIndex: "2147483647",
+      zIndex: "2147483000",
       display: "none",
       alignItems: "center",
       justifyContent: "center",
-      padding: "12px",
-      background: "rgba(15,22,19,.76)",
-      overflowY: "auto",
+      padding: "0",
+      overflow: "hidden",
       boxSizing: "border-box"
     });
-
-    const dialog = modal.querySelector(".product-modal-dialog");
 
     Object.assign(dialog.style, {
       position: "relative",
       width: "100%",
       maxWidth: "760px",
-      maxHeight: "calc(100vh - 24px)",
-      maxHeight: "calc(100dvh - 24px)",
+      height: "100%",
+      maxHeight: "100%",
       overflowY: "auto",
       overscrollBehavior: "contain",
+      WebkitOverflowScrolling: "touch",
       background: "#fff",
       color: "#202925",
-      borderRadius: "12px",
-      boxShadow: "0 20px 70px rgba(0,0,0,.3)",
+      borderRadius: "0",
       boxSizing: "border-box"
     });
 
-    // Крестик закреплён в верхнем углу самого окна.
-    // Отрицательных отступов больше нет.
-    const close = $("product-modal-close");
+    Object.assign(topbar.style, {
+      position: "sticky",
+      top: "0",
+      zIndex: "100",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "flex-end",
+      width: "100%",
+      height: "58px",
+      minHeight: "58px",
+      padding: "8px 12px",
+      background: "#fff",
+      borderBottom: "1px solid #edf0ee",
+      boxSizing: "border-box"
+    });
 
     Object.assign(close.style, {
-      position: "absolute",
-      top: "10px",
-      right: "10px",
+      position: "relative",
+      top: "auto",
+      right: "auto",
       left: "auto",
       bottom: "auto",
       float: "none",
-      zIndex: "20",
-      margin: "0",
-      padding: "0",
+      zIndex: "101",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      flex: "0 0 42px",
       width: "42px",
       height: "42px",
       minWidth: "42px",
       minHeight: "42px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
+      margin: "0",
+      padding: "0",
       border: "0",
       borderRadius: "50%",
       background: "#edf0ee",
       color: "#202925",
-      fontSize: "28px",
+      fontFamily: "Arial, sans-serif",
+      fontSize: "29px",
       fontWeight: "400",
       lineHeight: "1",
       cursor: "pointer",
@@ -284,27 +320,29 @@
       WebkitAppearance: "none"
     });
 
-    const content = $("product-modal-content");
-
     Object.assign(content.style, {
+      display: "block",
       padding: "24px",
-      paddingTop: "64px",
+      paddingTop: "24px",
       boxSizing: "border-box"
     });
 
-    // На телефонах уменьшаем отступы и учитываем видимую высоту.
     if (window.matchMedia("(max-width: 560px)").matches) {
-      modal.style.padding = "8px";
+      Object.assign(modal.style, {
+        alignItems: "stretch",
+        justifyContent: "stretch"
+      });
 
       Object.assign(dialog.style, {
-        maxHeight: "calc(100vh - 16px)",
-        maxHeight: "calc(100dvh - 16px)",
-        borderRadius: "10px"
+        width: "100%",
+        maxWidth: "none",
+        height: "100dvh",
+        maxHeight: "100dvh",
+        borderRadius: "0"
       });
 
       Object.assign(content.style, {
-        padding: "16px",
-        paddingTop: "64px"
+        padding: "16px"
       });
     }
 
@@ -319,7 +357,7 @@
 
     content.innerHTML = `
       <div class="product-modal-main"
-        style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:24px;margin-bottom:24px">
+           style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:24px;margin-bottom:24px">
         <div>
           <img
             class="product-modal-image"
@@ -330,38 +368,42 @@
         </div>
 
         <div>
-          <p style="color:#66716b;font-size:12px;text-transform:uppercase">
+          <p class="product-modal-category">
             ${esc(p.category || "Części samochodowe")}
           </p>
 
           <h2 id="modal-product-name"
-            style="font-size:28px;line-height:1.2;margin:0 48px 12px 0">
+              class="product-modal-title"
+              style="overflow-wrap:anywhere">
             ${esc(p.name || "Część samochodowa")}
           </h2>
 
-          <p>
+          <div class="product-modal-fitment">
             ${esc([p.make, p.model, p.years].filter(Boolean).join(" · ") || "Zapytaj o dopasowanie")}
-          </p>
+          </div>
 
-          ${p.oem ? `<p><strong>OEM:</strong> ${esc(p.oem)}</p>` : ""}
-
-          <p><strong>Status:</strong> ${esc(statusText(p.status))}</p>
-
-          <p style="font-size:26px;font-weight:700">
-            ${money(p.price)}
-          </p>
-
-          ${p.description
-            ? `<p style="white-space:pre-wrap;line-height:1.6;overflow-wrap:anywhere">${esc(p.description)}</p>`
+          ${p.oem
+            ? `<div class="product-modal-oem"><b>OEM:</b> ${esc(p.oem)}</div>`
             : ""}
 
-          <a class="button button-green"
-            href="${esc(contactUrl(p))}"
-            target="_blank"
-            rel="noopener"
-            style="display:inline-block;margin-top:12px;text-decoration:none">
-            Zapytaj przez WhatsApp ↗
-          </a>
+          <div><b>Status:</b> ${esc(statusText(p.status))}</div>
+
+          <div class="product-modal-price">
+            ${money(p.price)}
+          </div>
+
+          ${p.description
+            ? `<div class="product-modal-description">${esc(p.description)}</div>`
+            : ""}
+
+          <div class="product-modal-actions">
+            <a class="button button-green"
+               href="${esc(contactUrl(p))}"
+               target="_blank"
+               rel="noopener">
+              Zapytaj przez WhatsApp ↗
+            </a>
+          </div>
         </div>
       </div>
 
@@ -372,6 +414,7 @@
     modal.setAttribute("aria-hidden", "false");
     modal.style.setProperty("display", "flex", "important");
 
+    document.body.classList.add("modal-open");
     document.body.style.overflow = "hidden";
 
     $("product-modal-close").focus();
@@ -379,15 +422,16 @@
 
   function closeProduct() {
     const modal = $("product-modal");
-    if (!modal) return;
+    if (!modal || modal.hidden) return;
 
     modal.style.setProperty("display", "none", "important");
     modal.hidden = true;
     modal.setAttribute("aria-hidden", "true");
 
+    document.body.classList.remove("modal-open");
     document.body.style.overflow = "";
 
-    if (lastFocusedElement && lastFocusedElement.focus) {
+    if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
       lastFocusedElement.focus();
     }
   }
@@ -431,6 +475,7 @@
       badge.textContent = p.status === "reserved"
         ? "Zapytaj o dostępność"
         : statusText(p.status);
+
       badge.classList.add(p.status || "available");
 
       el.querySelector(".product-category").textContent =
