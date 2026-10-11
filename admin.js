@@ -539,4 +539,4 @@
       showUser(session?.user || null);
     });
   }
-})();
+})(); 
