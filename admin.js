@@ -1,28 +1,34 @@
 (() => {
   const cfg = window.APP_CONFIG || {};
+
   const configured =
-    cfg.SUPABASE_URL &&
-    cfg.SUPABASE_ANON_KEY &&
+    !!cfg.SUPABASE_URL &&
+    !!cfg.SUPABASE_ANON_KEY &&
     !cfg.SUPABASE_URL.includes("YOUR-PROJECT") &&
     !cfg.SUPABASE_ANON_KEY.includes("YOUR_");
 
   const $ = id => document.getElementById(id);
+
   if (!$("login-panel")) return;
 
-  const warning = $("setup-warning");
   const client = configured && window.supabase
-    ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
+    ? window.supabase.createClient(
+        cfg.SUPABASE_URL,
+        cfg.SUPABASE_ANON_KEY,
+        {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            storage: window.localStorage
+          }
+        }
+      )
     : null;
 
   let products = [];
-  let vehicles = [];
-  let currentGalleryUrls = [];
-  let selectedVehicle = null;
-  let lookupSequence = 0;
-
-  const MAX_IMAGES = 20;
-  const MAX_FILE_SIZE = 5 * 1024 * 1024;
-  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+  let currentImageUrl = "";
+  let authStateReady = false;
 
   function message(id, text, type = "") {
     const el = $(id);
@@ -31,270 +37,41 @@
     el.className = "form-message " + type;
   }
 
-  function esc(s) {
-    return String(s ?? "").replace(/[&<>"']/g, c => ({
+  function esc(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
       '"': "&quot;",
       "'": "&#39;"
-    }[c]));
+    }[char]));
   }
 
-  function money(n) {
+  function money(value) {
     return new Intl.NumberFormat("pl-PL", {
       style: "currency",
       currency: "PLN"
-    }).format(Number(n) || 0);
+    }).format(Number(value) || 0);
   }
 
-  function statusText(s) {
+  function statusText(status) {
     return ({
       available: "Dostępna",
       reserved: "Zarezerwowana",
       sold: "Sprzedana"
-    }[s] || "Dostępna");
+    }[status] || "Dostępna");
   }
-
-  function normalizeGallery(p) {
-    let urls = p?.gallery_urls;
-
-    if (typeof urls === "string") {
-      try {
-        urls = JSON.parse(urls);
-      } catch (_) {
-        urls = [];
-      }
-    }
-
-    if (!Array.isArray(urls)) urls = [];
-    urls = urls.filter(url => typeof url === "string" && url.trim());
-
-    if (p?.image_url && !urls.includes(p.image_url)) {
-      urls.unshift(p.image_url);
-    }
-
-    return [...new Set(urls)].slice(0, MAX_IMAGES);
-  }
-
-  function updateGalleryCount() {
-    const count = $("gallery-count");
-    if (count) {
-      count.textContent = `${currentGalleryUrls.length} z ${MAX_IMAGES} zdjęć`;
-    }
-  }
-
-  function renderCurrentGallery() {
-    const box = $("current-image");
-    if (!box) return;
-
-    box.innerHTML = currentGalleryUrls.map((url, index) => `
-      <div class="gallery-admin-item">
-        <img src="${esc(url)}" alt="Zdjęcie ${index + 1}" loading="lazy">
-        <label>
-          <input type="checkbox" data-remove-image="${index}">
-          Usuń zdjęcie
-        </label>
-        <small>${index === 0 ? "Główne zdjęcie" : `Zdjęcie ${index + 1}`}</small>
-      </div>
-    `).join("");
-
-    updateGalleryCount();
-  }
-
-  function getKeptGallery() {
-    const removed = new Set(
-      [...document.querySelectorAll("[data-remove-image]:checked")]
-        .map(el => Number(el.dataset.removeImage))
-    );
-
-    return currentGalleryUrls.filter((_, index) => !removed.has(index));
-  }
-
-  function switchTab(name) {
-    const allowed = ["product", "vehicle", "inventory"];
-    if (!allowed.includes(name)) return;
-
-    allowed.forEach(tab => {
-      const button = $(`tab-${tab}`);
-      const panel = $(`panel-${tab}`);
-      if (!button || !panel) return;
-
-      const active = tab === name;
-      button.setAttribute("aria-selected", String(active));
-      button.tabIndex = active ? 0 : -1;
-      panel.hidden = !active;
-    });
-  }
-
-  document.querySelectorAll("[data-admin-tab]").forEach(button => {
-    button.addEventListener("click", () => {
-      switchTab(button.dataset.adminTab);
-    });
-
-    button.addEventListener("keydown", e => {
-      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
-
-      e.preventDefault();
-
-      const tabs = [...document.querySelectorAll("[data-admin-tab]")];
-      const current = tabs.indexOf(button);
-      let next = current;
-
-      if (e.key === "ArrowRight") next = (current + 1) % tabs.length;
-      if (e.key === "ArrowLeft") next = (current - 1 + tabs.length) % tabs.length;
-      if (e.key === "Home") next = 0;
-      if (e.key === "End") next = tabs.length - 1;
-
-      tabs[next].focus();
-      switchTab(tabs[next].dataset.adminTab);
-    });
-  });
 
   function showUser(user) {
     $("login-panel").hidden = !!user;
     $("dashboard").hidden = !user;
 
-    if (user) {
-      switchTab("product");
-      refreshAll();
-    }
+    if (user) refresh();
   }
 
-  function vehicleDetails(v) {
-    const fields = [
-      ["Marka", v.make],
-      ["Model", v.model],
-      ["Rok", v.year],
-      ["VIN", v.vin],
-      ["Silnik", v.engine],
-      ["Paliwo", v.fuel],
-      ["Skrzynia biegów", v.transmission],
-      ["Napęd", v.drivetrain],
-      ["Strona kierownicy", v.steering_side],
-      ["Uwagi", v.notes]
-    ];
+  async function refresh() {
+    if (!client) return;
 
-    return fields
-      .filter(([, value]) =>
-        value !== null &&
-        value !== undefined &&
-        String(value).trim() !== ""
-      )
-      .map(([label, value]) =>
-        `<div><b>${esc(label)}:</b> ${esc(value)}</div>`
-      )
-      .join("");
-  }
-
-  function showVehicleInfo(v) {
-    const box = $("p-vehicle-info");
-    if (!box) return;
-
-    if (!v) {
-      box.hidden = true;
-      box.innerHTML = "";
-      return;
-    }
-
-    box.hidden = false;
-    box.innerHTML = `
-      <strong>Samochód znaleziony</strong>
-      <p><b>Numer rozbiórkowy:</b> ${esc(v.dismantling_number)}</p>
-      <div>${vehicleDetails(v)}</div>
-    `;
-  }
-
-  async function findVehicle(number) {
-    const normalized = number.trim().toUpperCase();
-    const sequence = ++lookupSequence;
-
-    selectedVehicle = null;
-    showVehicleInfo(null);
-
-    if (!normalized) return null;
-
-    message("form-message", "");
-
-    const { data, error } = await client
-      .from("vehicles")
-      .select("*")
-      .eq("dismantling_number", normalized)
-      .maybeSingle();
-
-    if (sequence !== lookupSequence) return null;
-
-    if (error) {
-      message("form-message", "Błąd wyszukiwania samochodu: " + error.message, "error");
-      return null;
-    }
-
-    if (!data) {
-      message(
-        "form-message",
-        `Nie znaleziono samochodu o numerze ${normalized}. Najpierw dodaj go w sekcji samochodów.`,
-        "error"
-      );
-      return null;
-    }
-
-    selectedVehicle = data;
-    $("p-vehicle-number").value = data.dismantling_number;
-    $("p-make").value = data.make || "";
-    $("p-model").value = data.model || "";
-    $("p-years").value = data.year ? String(data.year) : "";
-    showVehicleInfo(data);
-
-    return data;
-  }
-
-  async function loadVehicles() {
-    const { data, error } = await client
-      .from("vehicles")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      message("vehicles-message", "Błąd pobierania samochodów: " + error.message, "error");
-      return false;
-    }
-
-    vehicles = data || [];
-    renderVehicles();
-    return true;
-  }
-
-  function renderVehicles() {
-    const body = $("vehicles-body");
-    if (!body) return;
-
-    body.innerHTML = "";
-
-    vehicles.forEach(v => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td><b>${esc(v.dismantling_number)}</b></td>
-        <td>${esc([v.make, v.model].filter(Boolean).join(" "))}</td>
-        <td>${esc(v.year || "—")}</td>
-        <td>${esc(v.engine || "—")}</td>
-      `;
-      body.appendChild(tr);
-    });
-
-    if (!vehicles.length) {
-      body.innerHTML = '<tr><td colspan="4">Brak dodanych samochodów.</td></tr>';
-    }
-
-    const total = $("vehicle-total");
-    if (total) total.textContent = vehicles.length;
-  }
-
-  async function refreshAll() {
-    await loadVehicles();
-    await refreshProducts();
-  }
-
-  async function refreshProducts() {
     const { data, error } = await client
       .from("products")
       .select("*")
@@ -302,7 +79,11 @@
       .limit(5000);
 
     if (error) {
-      message("inventory-message", "Błąd pobierania danych: " + error.message, "error");
+      message(
+        "inventory-message",
+        "Błąd pobierania danych: " + error.message,
+        "error"
+      );
       return;
     }
 
@@ -312,44 +93,56 @@
   }
 
   function renderInventory() {
-    const search = $("admin-search");
-    const body = $("inventory-body");
-    if (!search || !body) return;
+    const q = $("admin-search").value
+      .trim()
+      .toLocaleLowerCase("pl");
 
-    const q = search.value.trim().toLocaleLowerCase("pl");
+    const body = $("inventory-body");
     body.innerHTML = "";
 
     products
       .filter(p =>
         [p.name, p.category, p.make, p.model, p.oem]
-          .some(v => String(v || "").toLocaleLowerCase("pl").includes(q))
+          .some(value =>
+            String(value || "")
+              .toLocaleLowerCase("pl")
+              .includes(q)
+          )
       )
       .forEach(p => {
-        const vehicle = vehicles.find(v => String(v.id) === String(p.vehicle_id));
-        const gallery = normalizeGallery(p);
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
           <td>
             <div class="table-product">
-              ${gallery[0]
-                ? `<img src="${esc(gallery[0])}" alt="">`
-                : '<div class="brand-mark">A</div>'}
+              ${
+                p.image_url
+                  ? `<img src="${esc(p.image_url)}" alt="">`
+                  : "<span>TP</span>"
+              }
               <div>
                 <b>${esc(p.name)}</b>
-                <small>${esc([p.category, p.make, p.model].filter(Boolean).join(" · "))}</small>
-                <small>${gallery.length} zdjęć</small>
-                ${vehicle ? `<small>Rozbiórka: ${esc(vehicle.dismantling_number)}</small>` : ""}
+                <small>${esc(
+                  [p.category, p.make, p.model]
+                    .filter(Boolean)
+                    .join(" · ")
+                )}</small>
               </div>
             </div>
           </td>
           <td>${esc(p.oem || "—")}</td>
           <td><b>${money(p.price)}</b></td>
-          <td><span class="table-status ${esc(p.status)}">${statusText(p.status)}</span></td>
+          <td>
+            <span class="table-status ${esc(p.status)}">
+              ${statusText(p.status)}
+            </span>
+          </td>
           <td>
             <div class="table-actions">
-              <button class="small-action" type="button" data-edit="${esc(p.id)}">Edytuj</button>
-              <button class="small-action delete" type="button" data-delete="${esc(p.id)}">Usuń</button>
+              <button class="small-action"
+                data-edit="${esc(p.id)}">Edytuj</button>
+              <button class="small-action delete"
+                data-delete="${esc(p.id)}">Usuń</button>
             </div>
           </td>
         `;
@@ -358,283 +151,191 @@
       });
 
     if (!body.children.length) {
-      body.innerHTML = '<tr><td colspan="5">Brak części do wyświetlenia.</td></tr>';
+      body.innerHTML =
+        '<tr><td colspan="5">Brak części do wyświetlenia.</td></tr>';
     }
   }
 
   function resetForm() {
     $("product-form").reset();
     $("product-id").value = "";
-    currentGalleryUrls = [];
-    selectedVehicle = null;
-    showVehicleInfo(null);
+    currentImageUrl = "";
+
+    $("current-image").hidden = true;
     $("current-image").innerHTML = "";
+
     $("form-title").textContent = "Dodaj nową część";
     $("save-product").textContent = "Zapisz część";
     $("cancel-edit").hidden = true;
-    $("p-image").value = "";
-    updateGalleryCount();
+
     message("form-message", "");
   }
 
-  async function edit(p) {
-    switchTab("product");
+  function edit(product) {
+    $("product-id").value = product.id;
+    $("p-name").value = product.name || "";
+    $("p-category").value = product.category || "";
+    $("p-make").value = product.make || "";
+    $("p-model").value = product.model || "";
+    $("p-years").value = product.years || "";
+    $("p-oem").value = product.oem || "";
+    $("p-price").value = product.price ?? "";
+    $("p-status").value = product.status || "available";
+    $("p-description").value = product.description || "";
 
-    $("product-id").value = p.id;
-    $("p-name").value = p.name || "";
-    $("p-category").value = p.category || "";
-    $("p-make").value = p.make || "";
-    $("p-model").value = p.model || "";
-    $("p-years").value = p.years || "";
-    $("p-oem").value = p.oem || "";
-    $("p-price").value = p.price ?? "";
-    $("p-status").value = p.status || "available";
-    $("p-description").value = p.description || "";
-    $("p-vehicle-number").value = "";
+    currentImageUrl = product.image_url || "";
 
-    selectedVehicle = null;
-    showVehicleInfo(null);
-
-    currentGalleryUrls = normalizeGallery(p);
-    renderCurrentGallery();
+    $("current-image").hidden = !currentImageUrl;
+    $("current-image").innerHTML = currentImageUrl
+      ? `<img src="${esc(currentImageUrl)}" alt="Aktualne zdjęcie">`
+      : "";
 
     $("form-title").textContent = "Edytuj część";
     $("save-product").textContent = "Zapisz zmiany";
     $("cancel-edit").hidden = false;
 
-    if (p.vehicle_id) {
-      const vehicle = vehicles.find(v => String(v.id) === String(p.vehicle_id));
-
-      if (vehicle) {
-        $("p-vehicle-number").value = vehicle.dismantling_number;
-        await findVehicle(vehicle.dismantling_number);
-      }
-    }
-
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function uploadImages(files) {
-    const urls = [];
+  async function uploadImage(file) {
+    if (!file) return currentImageUrl;
 
-    for (const file of files) {
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        throw new Error("Wybierz zdjęcia JPG, PNG lub WebP.");
-      }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      throw new Error("Wybierz zdjęcie JPG, PNG lub WebP.");
+    }
 
-      if (file.size > MAX_FILE_SIZE) {
-        throw new Error(`Zdjęcie „${file.name}” jest za duże. Maksymalny rozmiar to 5 MB.`);
-      }
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error("Zdjęcie jest za duże. Maksymalny rozmiar to 5 MB.");
+    }
 
-      const ext = file.type === "image/png" ? "png"
-        : file.type === "image/webp" ? "webp" : "jpg";
+    const ext = file.type === "image/png"
+      ? "png"
+      : file.type === "image/webp"
+        ? "webp"
+        : "jpg";
 
-      const path = `${crypto.randomUUID()}.${ext}`;
+    const path = `${crypto.randomUUID()}.${ext}`;
 
-      const { error } = await client.storage
-        .from("product-images")
-        .upload(path, file, {
-          upsert: false,
-          contentType: file.type
-        });
+    const { error } = await client.storage
+      .from("product-images")
+      .upload(path, file, {
+        upsert: false,
+        contentType: file.type
+      });
+
+    if (error) throw error;
+
+    const { data } = client.storage
+      .from("product-images")
+      .getPublicUrl(path);
+
+    return data.publicUrl;
+  }
+
+  $("login-form").addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (!client) {
+      message(
+        "login-message",
+        "Sprawdź konfigurację Supabase w config.js.",
+        "error"
+      );
+      return;
+    }
+
+    const button = $("login-form").querySelector(
+      'button[type="submit"]'
+    );
+
+    button.disabled = true;
+    message("login-message", "Logowanie…");
+
+    try {
+      const { data, error } = await client.auth.signInWithPassword({
+        email: $("email").value.trim(),
+        password: $("password").value
+      });
 
       if (error) throw error;
 
-      const { data } = client.storage
-        .from("product-images")
-        .getPublicUrl(path);
+      if (!data.session) {
+        throw new Error("Nie udało się utworzyć sesji.");
+      }
 
-      urls.push(data.publicUrl);
-    }
-
-    return urls;
-  }
-
-  $("p-image").addEventListener("change", () => {
-    const selected = [...$("p-image").files];
-    const kept = getKeptGallery();
-    const available = MAX_IMAGES - kept.length;
-
-    if (selected.length > available) {
+      message("login-message", "");
+      showUser(data.user);
+    } catch (error) {
       message(
-        "form-message",
-        `Można dodać maksymalnie ${Math.max(0, available)} nowych zdjęć. Limit to ${MAX_IMAGES}.`,
+        "login-message",
+        "Nie udało się zalogować: " + error.message,
         "error"
       );
-      $("p-image").value = "";
-      return;
+    } finally {
+      button.disabled = false;
     }
-
-    message(
-      "form-message",
-      selected.length ? `Wybrano nowych zdjęć: ${selected.length}.` : ""
-    );
-  });
-
-  $("login-form").addEventListener("submit", async e => {
-    e.preventDefault();
-
-    if (!client) {
-      message("login-message", "Sprawdź konfigurację Supabase w config.js.", "error");
-      return;
-    }
-
-    message("login-message", "Logowanie…");
-
-    const { error } = await client.auth.signInWithPassword({
-      email: $("email").value,
-      password: $("password").value
-    });
-
-    if (error) {
-      message("login-message", "Nie udało się zalogować. Sprawdź e-mail i hasło.", "error");
-      return;
-    }
-
-    message("login-message", "");
-    const { data } = await client.auth.getSession();
-    showUser(data.session?.user || null);
   });
 
   $("logout").addEventListener("click", async () => {
     if (!client) return;
-    await client.auth.signOut();
-    showUser(null);
-  });
 
-  $("vehicle-form").addEventListener("submit", async e => {
-    e.preventDefault();
-    if (!client) return;
+    const { error } = await client.auth.signOut();
 
-    const btn = $("save-vehicle");
-    btn.disabled = true;
-    message("vehicle-form-message", "Zapisywanie samochodu…");
-
-    try {
-      const number = $("v-number").value.trim().toUpperCase();
-
-      const payload = {
-        dismantling_number: number,
-        make: $("v-make").value.trim(),
-        model: $("v-model").value.trim(),
-        year: $("v-year").value ? Number($("v-year").value) : null,
-        vin: $("v-vin").value.trim() || null,
-        engine: $("v-engine").value.trim() || null,
-        fuel: $("v-fuel").value || null,
-        transmission: $("v-transmission").value || null,
-        drivetrain: $("v-drivetrain").value || null,
-        steering_side: $("v-steering-side").value || null,
-        notes: $("v-notes").value.trim() || null
-      };
-
-      const { data, error } = await client
-        .from("vehicles")
-        .insert(payload)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      await loadVehicles();
-      $("vehicle-form").reset();
-
+    if (error) {
       message(
-        "vehicle-form-message",
-        `Samochód ${data.dismantling_number} został dodany.`,
-        "success"
-      );
-    } catch (err) {
-      const duplicate = /duplicate key|vehicles_dismantling_number_key|already exists/i.test(err.message || "");
-
-      message(
-        "vehicle-form-message",
-        duplicate
-          ? "Ten numer rozbiórkowy już istnieje. Użyj innego numeru."
-          : "Nie udało się dodać samochodu: " + (err.message || "nieznany błąd"),
+        "inventory-message",
+        "Nie udało się wylogować: " + error.message,
         "error"
       );
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
-  $("p-vehicle-number").addEventListener("change", async () => {
-    const number = $("p-vehicle-number").value.trim().toUpperCase();
-    $("p-vehicle-number").value = number;
-    await findVehicle(number);
-  });
-
-  $("p-vehicle-number").addEventListener("keydown", e => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      $("p-vehicle-number").dispatchEvent(new Event("change"));
-    }
-  });
-
-  $("cancel-edit").addEventListener("click", () => {
-    resetForm();
-    switchTab("product");
-  });
-
-  $("admin-search").addEventListener("input", renderInventory);
-
-  $("product-form").addEventListener("submit", async e => {
-    e.preventDefault();
-    if (!client) return;
-
-    const number = $("p-vehicle-number").value.trim().toUpperCase();
-
-    if (!number) {
-      message("form-message", "Wpisz numer rozbiórkowy samochodu.", "error");
-      $("p-vehicle-number").focus();
       return;
     }
 
-    const btn = $("save-product");
-    btn.disabled = true;
+    showUser(null);
+  });
+
+  $("cancel-edit").addEventListener("click", resetForm);
+  $("admin-search").addEventListener("input", renderInventory);
+
+  $("product-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!client) return;
+
+    const button = $("save-product");
+    button.disabled = true;
+    message("form-message", "Zapisywanie…");
 
     try {
-      message("form-message", "Sprawdzanie samochodu…");
-
-      const vehicle = await findVehicle(number);
-
-      if (!vehicle) {
-        throw new Error("Nie można zapisać części bez prawidłowego numeru rozbiórkowego.");
-      }
-
-      const keptUrls = getKeptGallery();
-      const files = [...$("p-image").files];
-
-      if (keptUrls.length + files.length > MAX_IMAGES) {
-        throw new Error(`W galerii może być maksymalnie ${MAX_IMAGES} zdjęć.`);
-      }
-
-      message("form-message", "Ładowanie zdjęć i zapisywanie…");
-
-      const newUrls = await uploadImages(files);
-      const galleryUrls = [...keptUrls, ...newUrls].slice(0, MAX_IMAGES);
-      const imageUrl = galleryUrls[0] || null;
+      const image_url = await uploadImage(
+        $("p-image").files[0]
+      );
 
       const payload = {
         name: $("p-name").value.trim(),
         category: $("p-category").value.trim(),
-        make: vehicle.make || null,
-        model: vehicle.model || null,
-        years: vehicle.year ? String(vehicle.year) : null,
+        make: $("p-make").value.trim() || null,
+        model: $("p-model").value.trim() || null,
+        years: $("p-years").value.trim() || null,
         oem: $("p-oem").value.trim() || null,
         price: Number($("p-price").value),
         status: $("p-status").value,
         description: $("p-description").value.trim() || null,
-        image_url: imageUrl,
-        gallery_urls: galleryUrls,
-        vehicle_id: vehicle.id
+        image_url: image_url || null
       };
 
       const id = $("product-id").value;
 
       const result = id
-        ? await client.from("products").update(payload).eq("id", id).select().single()
-        : await client.from("products").insert(payload).select().single();
+        ? await client
+            .from("products")
+            .update(payload)
+            .eq("id", id)
+            .select()
+            .single()
+        : await client
+            .from("products")
+            .insert(payload)
+            .select()
+            .single();
 
       if (result.error) throw result.error;
 
@@ -645,32 +346,34 @@
       );
 
       resetForm();
-      await refreshProducts();
-      switchTab("inventory");
-    } catch (err) {
+      await refresh();
+    } catch (error) {
       message(
         "form-message",
-        "Nie udało się zapisać: " + (err.message || "nieznany błąd"),
+        "Nie udało się zapisać: " + error.message,
         "error"
       );
     } finally {
-      btn.disabled = false;
+      button.disabled = false;
     }
   });
 
-  $("inventory-body").addEventListener("click", async e => {
-    const editId = e.target.closest("[data-edit]")?.dataset.edit;
-    const deleteId = e.target.closest("[data-delete]")?.dataset.delete;
+  $("inventory-body").addEventListener("click", async event => {
+    const editId = event.target.closest("[data-edit]")?.dataset.edit;
+    const deleteId = event.target.closest("[data-delete]")?.dataset.delete;
 
     if (editId) {
-      const p = products.find(x => String(x.id) === editId);
-      if (p) await edit(p);
+      const product = products.find(p => p.id === editId);
+      if (product) edit(product);
     }
 
     if (deleteId) {
-      const p = products.find(x => String(x.id) === deleteId);
+      const product = products.find(p => p.id === deleteId);
 
-      if (!p || !confirm(`Usunąć część „${p.name}”? Tej operacji nie można cofnąć.`)) {
+      if (
+        !product ||
+        !confirm(`Usunąć część „${product.name}”? Tej operacji nie można cofnąć.`)
+      ) {
         return;
       }
 
@@ -680,28 +383,48 @@
         .eq("id", deleteId);
 
       if (error) {
-        message("inventory-message", "Nie udało się usunąć części: " + error.message, "error");
+        message(
+          "inventory-message",
+          "Nie udało się usunąć części: " + error.message,
+          "error"
+        );
         return;
       }
 
       message("inventory-message", "Część została usunięta.", "success");
-      await refreshProducts();
+      await refresh();
     }
   });
 
-  switchTab("product");
-
-  if (!configured || !client) {
-    warning.hidden = false;
-    warning.textContent = "Konfiguracja nie jest gotowa. Sprawdź SUPABASE_URL i SUPABASE_ANON_KEY w config.js.";
-    $("login-panel").hidden = false;
+  if (!configured || !window.supabase) {
+    $("setup-warning").hidden = false;
+    $("setup-warning").textContent =
+      "Sprawdź SUPABASE_URL i SUPABASE_ANON_KEY w config.js.";
   } else {
-    client.auth.getSession().then(({ data }) => {
-      showUser(data.session?.user || null);
+    client.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        showUser(null);
+      } else if (session?.user) {
+        showUser(session.user);
+      } else if (authStateReady) {
+        showUser(null);
+      }
     });
 
-    client.auth.onAuthStateChange((_event, session) => {
-      showUser(session?.user || null);
-    });
+    client.auth.getSession()
+      .then(({ data, error }) => {
+        authStateReady = true;
+
+        if (error) {
+          showUser(null);
+          return;
+        }
+
+        showUser(data.session?.user || null);
+      })
+      .catch(() => {
+        authStateReady = true;
+        showUser(null);
+      });
   }
 })();
