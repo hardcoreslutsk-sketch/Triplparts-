@@ -1,2 +1,156 @@
-<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Panel administratora — ARVORN Auto Parts</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script defer src="admin.js"></script></head><body class="admin-body"><header class="topbar"><a class="brand" href="./"><span class="brand-mark">A</span><span><b>ARVORN</b><small>AUTO PARTS</small></span></a><a class="admin-link" href="index.html">← Wróć do katalogu</a></header><main class="admin-main"><div class="section-heading"><div><span class="eyebrow dark-eyebrow">STREFA WŁAŚCICIELA</span><h1>Panel administratora</h1><p>Dodawaj, edytuj i aktualizuj części w katalogu.</p></div></div><div id="setup-warning" class="notice" hidden></div><section id="login-panel" class="admin-panel"><h2>Zaloguj się</h2><p>Panel jest dostępny tylko dla autoryzowanego administratora.</p><form id="login-form" class="form-grid"><label class="full">Adres e-mail<input type="email" id="email" required autocomplete="username" placeholder="ty@firma.pl"></label><label class="full">Hasło<input type="password" id="password" required autocomplete="current-password" placeholder="Hasło"></label><button class="button button-dark full" type="submit">Zaloguj się</button></form><p id="login-message" class="form-message" role="status"></p></section>
-<section id="dashboard" hidden><div class="admin-toolbar"><div><h2>Twoje części <span id="admin-total" class="total-pill">0</span></h2><p>Zmiany zapisują się w bazie danych.</p></div><button id="logout" class="button button-outline">Wyloguj</button></div><section class="admin-panel"><h2 id="form-title">Dodaj nową część</h2><form id="product-form" class="form-grid"><input type="hidden" id="product-id"><label>Nazwa części *<input id="p-name" required maxlength="140" placeholder="np. Lampa przednia lewa"></label><label>Kategoria *<input id="p-category" required maxlength="80" placeholder="np. Oświetlenie"></label><label>Marka auta<input id="p-make" maxlength="80" placeholder="np. BMW"></label><label>Model auta<input id="p-model" maxlength="100" placeholder="np. Seria 3 E90"></label><label>Rok / zakres lat<input id="p-years" maxlength="60" placeholder="np. 2005–2011"></label><label>Numer OEM / indeks<input id="p-oem" maxlength="100" placeholder="Numer części"></label><label>Cena (PLN) *<input id="p-price" required type="number" min="0" step="0.01" placeholder="250.00"></label><label>Status<select id="p-status"><option value="available">Dostępna</option><option value="reserved">Zarezerwowana</option><option value="sold">Sprzedana</option></select></label><label class="full">Opis<textarea id="p-description" rows="3" maxlength="2000" placeholder="Stan, numer magazynowy, uwagi…"></textarea></label><label class="full">Zdjęcie części<input id="p-image" type="file" accept="image/jpeg,image/png,image/webp"><small>JPG, PNG lub WebP. Zalecane zdjęcia do 1 MB.</small></label><div id="current-image" class="full current-image" hidden></div><div class="form-actions full"><button class="button button-dark" type="submit" id="save-product">Zapisz część</button><button class="button button-outline" type="button" id="cancel-edit" hidden>Anuluj edycję</button></div></form><p id="form-message" class="form-message" role="status"></p></section><section class="admin-panel inventory-panel"><div class="inventory-heading"><h2>Lista części</h2><input id="admin-search" type="search" placeholder="Szukaj w swoich częściach…"></div><div class="table-scroll"><table><thead><tr><th>Część</th><th>OEM</th><th>Cena</th><th>Status</th><th>Akcje</th></tr></thead><tbody id="inventory-body"></tbody></table></div><p id="inventory-message" class="form-message"></p></section></section></main><footer><p>ARVORN AUTO PARTS · Panel administracyjny</p></footer></body></html>
+
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Panel administratora — ARVORN Auto Parts</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script defer src="admin.js"></script>
+</head>
+<body class="admin-body">
+<header class="topbar">
+  <a class="brand" href="./">
+    <span class="brand-mark">A</span>
+    <span><b>ARVORN</b><small>AUTO PARTS</small></span>
+  </a>
+  <a class="admin-link" href="index.html">← Wróć do katalogu</a>
+</header>
+
+<main class="admin-main">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow dark-eyebrow">STREFA WŁAŚCICIELA</span>
+      <h1>Panel administratora</h1>
+      <p>Dodawaj, edytuj i aktualizuj części w katalogu.</p>
+    </div>
+  </div>
+
+  <div id="setup-warning" class="notice" hidden></div>
+
+  <section id="login-panel" class="admin-panel">
+    <h2>Zaloguj się</h2>
+    <p>Panel jest dostępny tylko dla autoryzowanego administratora.</p>
+    <form id="login-form" class="form-grid">
+      <label class="full">Adres e-mail
+        <input type="email" id="email" required autocomplete="username" placeholder="ty@firma.pl">
+      </label>
+      <label class="full">Hasło
+        <input type="password" id="password" required autocomplete="current-password" placeholder="Hasło">
+      </label>
+      <button class="button button-dark full" type="submit">Zaloguj się</button>
+    </form>
+    <p id="login-message" class="form-message" role="status"></p>
+  </section>
+
+  <section id="dashboard" hidden>
+    <div class="admin-toolbar">
+      <div>
+        <h2>Twoje części <span id="admin-total" class="total-pill">0</span></h2>
+        <p>Zmiany zapisują się w bazie danych.</p>
+      </div>
+      <button id="logout" class="button button-outline">Wyloguj</button>
+    </div>
+
+    <section class="admin-panel">
+      <h2 id="form-title">Dodaj nową część</h2>
+
+      <form id="product-form" class="form-grid">
+        <input type="hidden" id="product-id">
+
+        <label class="full">Samochód z demontażu
+          <select id="p-vehicle">
+            <option value="">Wybierz numer rozbiórkowy</option>
+          </select>
+          <small>Wybierz auto, aby automatycznie uzupełnić jego dane.</small>
+        </label>
+
+        <p id="vehicle-info" class="form-message full" role="status"></p>
+
+        <label>Nazwa części *
+          <input id="p-name" required maxlength="140" placeholder="np. Lampa przednia lewa">
+        </label>
+
+        <label>Kategoria *
+          <input id="p-category" required maxlength="80" placeholder="np. Oświetlenie">
+        </label>
+
+        <label>Marka auta
+          <input id="p-make" maxlength="80" placeholder="np. BMW">
+        </label>
+
+        <label>Model auta
+          <input id="p-model" maxlength="100" placeholder="np. Seria 3 E90">
+        </label>
+
+        <label>Rok / zakres lat
+          <input id="p-years" maxlength="60" placeholder="np. 2005–2011">
+        </label>
+
+        <label>Numer OEM / indeks
+          <input id="p-oem" maxlength="100" placeholder="Numer części">
+        </label>
+
+        <label>Cena (PLN) *
+          <input id="p-price" required type="number" min="0" step="0.01" placeholder="250.00">
+        </label>
+
+        <label>Status
+          <select id="p-status">
+            <option value="available">Dostępna</option>
+            <option value="reserved">Zarezerwowana</option>
+            <option value="sold">Sprzedana</option>
+          </select>
+        </label>
+
+        <label class="full">Opis
+          <textarea id="p-description" rows="3" maxlength="2000" placeholder="Stan, numer magazynowy, uwagi…"></textarea>
+        </label>
+
+        <label class="full">Zdjęcie części
+          <input id="p-image" type="file" accept="image/jpeg,image/png,image/webp">
+          <small>JPG, PNG lub WebP. Maksymalnie 5 MB.</small>
+        </label>
+
+        <div id="current-image" class="full current-image" hidden></div>
+
+        <div class="form-actions full">
+          <button class="button button-dark" type="submit" id="save-product">Zapisz część</button>
+          <button class="button button-outline" type="button" id="cancel-edit" hidden>Anuluj edycję</button>
+        </div>
+      </form>
+
+      <p id="form-message" class="form-message" role="status"></p>
+    </section>
+
+    <section class="admin-panel inventory-panel">
+      <div class="inventory-heading">
+        <h2>Lista części</h2>
+        <input id="admin-search" type="search" placeholder="Szukaj w swoich częściach…">
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Część</th>
+              <th>OEM</th>
+              <th>Cena</th>
+              <th>Status</th>
+              <th>Akcje</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-body"></tbody>
+        </table>
+      </div>
+      <p id="inventory-message" class="form-message"></p>
+    </section>
+  </section>
+</main>
+
+<footer>
+  <p>ARVORN AUTO PARTS · Panel administracyjny</p>
+</footer>
+</body>
+</html>
