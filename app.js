@@ -1,1303 +1,291 @@
 
 (() => {
+  'use strict';
+
   const cfg = window.APP_CONFIG || {};
-
-  const CONTACT_PHONE = "+48726579717";
-  const CONTACT_WHATSAPP = "48726579717";
-  const CONTACT_EMAIL = "triplparts@gmail.com";
-
   const $ = id => document.getElementById(id);
-  const grid = $("product-grid");
 
+  const grid = $('product-grid');
   if (!grid) return;
 
-  const configured =
-    cfg.SUPABASE_URL &&
-    !cfg.SUPABASE_URL.includes("YOUR-PROJECT") &&
-    cfg.SUPABASE_ANON_KEY &&
-    !cfg.SUPABASE_ANON_KEY.includes("YOUR_");
-
-  const client = configured && window.supabase
-    ? window.supabase.createClient(
-        cfg.SUPABASE_URL,
-        cfg.SUPABASE_ANON_KEY
-      )
-    : null;
-
-  const demo = [
-    {
-      id: "demo1",
-      name: "Lampa przednia lewa",
-      category: "Oświetlenie",
-      make: "BMW",
-      model: "Seria 3 E90",
-      years: "2005–2011",
-      oem: "63117161649",
-      price: 180,
-      status: "available",
-      description: "Przykładowy produkt demonstracyjny.",
-      image_url: "",
-      gallery_urls: [],
-      vehicle: null
-    },
-    {
-      id: "demo2",
-      name: "Zderzak przedni",
-      category: "Karoseria",
-      make: "Volkswagen",
-      model: "Golf VI",
-      years: "2008–2012",
-      oem: "5K0807217",
-      price: 350,
-      status: "available",
-      description: "Przykładowy produkt demonstracyjny.",
-      image_url: "",
-      gallery_urls: [],
-      vehicle: null
-    },
-    {
-      id: "demo3",
-      name: "Sterownik silnika ECU",
-      category: "Elektronika",
-      make: "Audi",
-      model: "A4 B8",
-      years: "2008–2015",
-      oem: "03L906018AQ",
-      price: 260,
-      status: "reserved",
-      description: "Przykładowy produkt demonstracyjny.",
-      image_url: "",
-      gallery_urls: [],
-      vehicle: null
-    },
-    {
-      id: "demo4",
-      name: "Skrzynia biegów",
-      category: "Skrzynie biegów",
-      make: "Opel",
-      model: "Astra J",
-      years: "2009–2015",
-      oem: "M32",
-      price: 950,
-      status: "available",
-      description: "Przykładowy produkt demonstracyjny.",
-      image_url: "",
-      gallery_urls: [],
-      vehicle: null
-    }
-  ];
+  const statusBox = $('catalog-status');
+  const searchInput = $('search');
+  const categoryFilter = $('category-filter');
+  const makeFilter = $('make-filter');
+  const resultsCount = $('results-count');
+  const emptyState = $('empty-state');
 
   let products = [];
-  let lastFocusedElement = null;
-  let activeGalleryIndex = 0;
-  let activeGalleryUrls = [];
+  let client = null;
 
-  let contactLastFocusedElement = null;
-  let contactCurrentProduct = null;
+  const placeholder = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="640" height="440">
+      <rect width="100%" height="100%" fill="#edf0ef"/>
+      <text x="50%" y="48%" font-family="Arial" font-size="30"
+        fill="#66757a" text-anchor="middle">TRIPL PARTS</text>
+      <text x="50%" y="58%" font-family="Arial" font-size="18"
+        fill="#66757a" text-anchor="middle">USED AUTO PARTS</text>
+    </svg>
+  `)}`;
 
-  const placeholder =
-    `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="440"><rect width="640" height="440" fill="#edf0ef"/><text x="320" y="220" text-anchor="middle" font-family="Arial" font-size="24" fill="#7d898a">ARVORN AUTO PARTS</text></svg>'
-    )}`;
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[char]);
 
-  const money = n =>
-    new Intl.NumberFormat("pl-PL", {
-      style: "currency",
-      currency: "PLN",
-      maximumFractionDigits: 2
-    }).format(Number(n) || 0);
+  const money = value => new Intl.NumberFormat('pl-PL', {
+    style: 'currency',
+    currency: 'PLN',
+    maximumFractionDigits: 2
+  }).format(Number(value) || 0);
 
-  const statusText = s => ({
-    available: "Dostępna",
-    reserved: "Zarezerwowana",
-    sold: "Sprzedana"
-  }[s] || "Dostępna");
+  const statusText = status => ({
+    available: 'Dostępna',
+    reserved: 'Zarezerwowana',
+    sold: 'Sprzedana'
+  }[status] || 'Dostępna');
 
-  function esc(s) {
-    return String(s ?? "").replace(/[&<>"']/g, c => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
-    }[c]));
+  function showStatus(message, isError = false) {
+    if (!statusBox) return;
+    statusBox.hidden = false;
+    statusBox.textContent = message;
+    statusBox.classList.toggle('notice-error', isError);
   }
 
-  function galleryFor(p) {
-    let urls = p?.gallery_urls;
-
-    if (typeof urls === "string") {
-      try {
-        urls = JSON.parse(urls);
-      } catch (_) {
-        urls = [];
-      }
-    }
-
-    if (!Array.isArray(urls)) urls = [];
-
-    urls = urls.filter(
-      url => typeof url === "string" && url.trim()
-    );
-
-    if (p?.image_url && !urls.includes(p.image_url)) {
-      urls.unshift(p.image_url);
-    }
-
-    return [...new Set(urls)].slice(0, 20);
+  function hideStatus() {
+    if (statusBox) statusBox.hidden = true;
   }
 
-  function productMessage(p) {
-    const v = p?.vehicle || {};
-
-    const lines = [
-      "Dzień dobry, proszę o informację o dostępności części:",
-      `Część: ${p?.name || "Nie podano"}`,
-      p?.make ? `Marka: ${p.make}` : "",
-      p?.model ? `Model: ${p.model}` : "",
-      p?.years ? `Rocznik: ${p.years}` : "",
-      p?.oem ? `OEM: ${p.oem}` : "",
-      v.dismantling_number
-        ? `Numer rozbiórkowy: ${v.dismantling_number}`
-        : "",
-      p?.price !== null && p?.price !== undefined
-        ? `Cena: ${money(p.price)}`
-        : ""
-    ].filter(Boolean);
-
-    return lines.join("\n");
+  function getWhatsAppNumber() {
+    return String(cfg.WHATSAPP_NUMBER || '').replace(/\D/g, '');
   }
 
-  function contactUrl(p) {
-    return `https://wa.me/${CONTACT_WHATSAPP}?text=${encodeURIComponent(
-      productMessage(p)
-    )}`;
+  function contactUrl(product) {
+    const message = [
+      'Dzień dobry, proszę o informację o dostępności części:',
+      product.name,
+      [product.make, product.model, product.years].filter(Boolean).join(' '),
+      product.oem ? `OEM: ${product.oem}` : '',
+      product.vehicle?.dismantling_number
+        ? `Numer rozbiórki: ${product.vehicle.dismantling_number}`
+        : '',
+      product.price != null ? `Cena: ${money(product.price)}` : ''
+    ].filter(Boolean).join('\n');
+
+    const number = getWhatsAppNumber();
+    return `https://wa.me/${number}${number ? '' : ''}?text=${encodeURIComponent(message)}`;
   }
-
-  function emailUrl(p) {
-    const subject = `Zapytanie o część: ${p?.name || "część samochodowa"}`;
-
-    return (
-      `mailto:${CONTACT_EMAIL}` +
-      `?subject=${encodeURIComponent(subject)}` +
-      `&body=${encodeURIComponent(productMessage(p))}`
-    );
-  }
-
-  /* =========================================
-     OKNO WYBORU SPOSOBU KONTAKTU
-     ========================================= */
-
-  function ensureContactModal() {
-    let modal = $("contact-choice-modal");
-
-    if (modal) return modal;
-
-    modal = document.createElement("div");
-    modal.id = "contact-choice-modal";
-    modal.className = "contact-choice-modal";
-    modal.hidden = true;
-    modal.setAttribute("aria-hidden", "true");
-
-    modal.innerHTML = `
-      <div
-        class="contact-choice-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="contact-choice-title"
-      >
-        <div class="contact-choice-header">
-          <div>
-            <div class="contact-choice-eyebrow">
-              ARVORN AUTO PARTS
-            </div>
-            <h2 id="contact-choice-title">
-              Zapytaj o część
-            </h2>
-          </div>
-
-          <button
-            type="button"
-            class="contact-choice-close"
-            aria-label="Zamknij okno"
-          >×</button>
-        </div>
-
-        <div class="contact-choice-body">
-          <p class="contact-choice-description">
-            Wybierz, jak chcesz się z nami skontaktować.
-          </p>
-
-          <div class="contact-choice-product">
-            <strong class="contact-choice-product-name"></strong>
-            <span class="contact-choice-product-details"></span>
-          </div>
-
-          <div class="contact-choice-options">
-            <a
-              class="contact-choice-option contact-choice-whatsapp"
-              data-contact-whatsapp
-              href="#"
-              target="_blank"
-              rel="noopener"
-            >
-              <span class="contact-choice-icon" aria-hidden="true">◉</span>
-              <span class="contact-choice-option-text">
-                <strong>WhatsApp</strong>
-                <small>Wyślij zapytanie o tę część</small>
-              </span>
-              <span class="contact-choice-arrow" aria-hidden="true">↗</span>
-            </a>
-
-            <a
-              class="contact-choice-option contact-choice-phone"
-              data-contact-phone
-              href="tel:+48726579717"
-            >
-              <span class="contact-choice-icon" aria-hidden="true">☎</span>
-              <span class="contact-choice-option-text">
-                <strong>Zadzwoń</strong>
-                <small>Porozmawiaj z nami telefonicznie</small>
-              </span>
-              <span class="contact-choice-arrow" aria-hidden="true">↗</span>
-            </a>
-
-            <a
-              class="contact-choice-option contact-choice-email"
-              data-contact-email
-              href="#"
-            >
-              <span class="contact-choice-icon" aria-hidden="true">✉</span>
-              <span class="contact-choice-option-text">
-                <strong>E-mail</strong>
-                <small>Wyślij wiadomość z danymi części</small>
-              </span>
-              <span class="contact-choice-arrow" aria-hidden="true">↗</span>
-            </a>
-          </div>
-
-          <p class="contact-choice-footnote">
-            Dane wybranej części zostaną dodane do wiadomości.
-          </p>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    const closeButton = modal.querySelector(".contact-choice-close");
-
-    closeButton.addEventListener("click", closeContactChoices);
-
-    modal.addEventListener("click", event => {
-      if (event.target === modal) {
-        closeContactChoices();
-      }
-    });
-
-    const dialog = modal.querySelector(".contact-choice-dialog");
-
-    Object.assign(modal.style, {
-      position: "fixed",
-      inset: "0",
-      zIndex: "2147483500",
-      display: "none",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "20px",
-      overflowY: "auto",
-      background: "rgba(12, 20, 17, 0.68)",
-      boxSizing: "border-box"
-    });
-
-    Object.assign(dialog.style, {
-      width: "100%",
-      maxWidth: "460px",
-      maxHeight: "calc(100dvh - 40px)",
-      overflowY: "auto",
-      overscrollBehavior: "contain",
-      background: "#ffffff",
-      color: "#202925",
-      borderRadius: "18px",
-      boxShadow: "0 24px 80px rgba(0,0,0,.25)",
-      boxSizing: "border-box"
-    });
-
-    const header = modal.querySelector(".contact-choice-header");
-
-    Object.assign(header.style, {
-      display: "flex",
-      alignItems: "flex-start",
-      justifyContent: "space-between",
-      gap: "16px",
-      padding: "22px 22px 18px",
-      borderBottom: "1px solid #edf0ee"
-    });
-
-    const eyebrow = modal.querySelector(".contact-choice-eyebrow");
-
-    Object.assign(eyebrow.style, {
-      marginBottom: "7px",
-      color: "#1b6b48",
-      fontSize: "11px",
-      fontWeight: "800",
-      letterSpacing: "1.6px"
-    });
-
-    const title = modal.querySelector("#contact-choice-title");
-
-    Object.assign(title.style, {
-      margin: "0",
-      fontSize: "24px",
-      lineHeight: "1.2",
-      fontWeight: "800"
-    });
-
-    Object.assign(closeButton.style, {
-      flex: "0 0 40px",
-      width: "40px",
-      height: "40px",
-      border: "0",
-      borderRadius: "50%",
-      background: "#f0f3f1",
-      color: "#202925",
-      fontSize: "28px",
-      lineHeight: "1",
-      cursor: "pointer"
-    });
-
-    const body = modal.querySelector(".contact-choice-body");
-
-    Object.assign(body.style, {
-      padding: "20px 22px 22px"
-    });
-
-    const description = modal.querySelector(
-      ".contact-choice-description"
-    );
-
-    Object.assign(description.style, {
-      margin: "0 0 16px",
-      color: "#68746d",
-      fontSize: "14px",
-      lineHeight: "1.5"
-    });
-
-    const productBox = modal.querySelector(".contact-choice-product");
-
-    Object.assign(productBox.style, {
-      display: "flex",
-      flexDirection: "column",
-      gap: "6px",
-      padding: "14px",
-      marginBottom: "18px",
-      background: "#f3f6f4",
-      borderRadius: "10px",
-      overflowWrap: "anywhere"
-    });
-
-    Object.assign(
-      modal.querySelector(".contact-choice-product-name").style,
-      {
-        fontSize: "15px",
-        fontWeight: "800",
-        lineHeight: "1.4"
-      }
-    );
-
-    Object.assign(
-      modal.querySelector(".contact-choice-product-details").style,
-      {
-        color: "#68746d",
-        fontSize: "12px",
-        lineHeight: "1.6"
-      }
-    );
-
-    const options = modal.querySelector(".contact-choice-options");
-
-    Object.assign(options.style, {
-      display: "grid",
-      gap: "10px"
-    });
-
-    modal.querySelectorAll(".contact-choice-option").forEach(option => {
-      Object.assign(option.style, {
-        display: "flex",
-        alignItems: "center",
-        gap: "13px",
-        minHeight: "72px",
-        padding: "13px 14px",
-        border: "1px solid #e1e7e3",
-        borderRadius: "12px",
-        color: "#202925",
-        background: "#ffffff",
-        textDecoration: "none",
-        boxSizing: "border-box",
-        transition: "background .15s ease, border-color .15s ease"
-      });
-
-      option.addEventListener("mouseenter", () => {
-        option.style.background = "#f7faf8";
-        option.style.borderColor = "#aabeb1";
-      });
-
-      option.addEventListener("mouseleave", () => {
-        option.style.background = "#ffffff";
-        option.style.borderColor = "#e1e7e3";
-      });
-    });
-
-    Object.assign(
-      modal.querySelector(".contact-choice-whatsapp").style,
-      {
-        borderColor: "#b7dfc3",
-        background: "#f0faf3"
-      }
-    );
-
-    const icons = modal.querySelectorAll(".contact-choice-icon");
-
-    icons.forEach(icon => {
-      Object.assign(icon.style, {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flex: "0 0 42px",
-        width: "42px",
-        height: "42px",
-        borderRadius: "11px",
-        background: "#edf2ee",
-        color: "#1b6b48",
-        fontSize: "22px",
-        fontWeight: "700"
-      });
-    });
-
-    const whatsappIcon = modal.querySelector(
-      ".contact-choice-whatsapp .contact-choice-icon"
-    );
-
-    whatsappIcon.style.background = "#d8f3df";
-    whatsappIcon.style.color = "#16803d";
-
-    modal.querySelectorAll(".contact-choice-option-text").forEach(text => {
-      Object.assign(text.style, {
-        display: "flex",
-        flex: "1",
-        minWidth: "0",
-        flexDirection: "column",
-        gap: "5px"
-      });
-
-      Object.assign(text.querySelector("strong").style, {
-        fontSize: "15px",
-        lineHeight: "1.3"
-      });
-
-      Object.assign(text.querySelector("small").style, {
-        color: "#68746d",
-        fontSize: "12px",
-        lineHeight: "1.4"
-      });
-    });
-
-    modal.querySelectorAll(".contact-choice-arrow").forEach(arrow => {
-      Object.assign(arrow.style, {
-        color: "#68746d",
-        fontSize: "19px",
-        flex: "0 0 auto"
-      });
-    });
-
-    const footnote = modal.querySelector(".contact-choice-footnote");
-
-    Object.assign(footnote.style, {
-      margin: "16px 0 0",
-      color: "#78837d",
-      fontSize: "11px",
-      lineHeight: "1.5",
-      textAlign: "center"
-    });
-
-    return modal;
-  }
-
-  function openContactChoices(p) {
-    const modal = ensureContactModal();
-
-    contactLastFocusedElement = document.activeElement;
-    contactCurrentProduct = p;
-
-    const v = p.vehicle || {};
-
-    modal.querySelector(".contact-choice-product-name").textContent =
-      p.name || "Część samochodowa";
-
-    const details = [
-      [p.make, p.model, p.years].filter(Boolean).join(" · "),
-      p.oem ? `OEM: ${p.oem}` : "",
-      v.dismantling_number
-        ? `Numer rozbiórkowy: ${v.dismantling_number}`
-        : "",
-      p.price !== null && p.price !== undefined
-        ? `Cena: ${money(p.price)}`
-        : ""
-    ].filter(Boolean);
-
-    modal.querySelector(
-      ".contact-choice-product-details"
-    ).textContent = details.join(" | ") || "Zapytaj o szczegóły";
-
-    const whatsapp = modal.querySelector("[data-contact-whatsapp]");
-    whatsapp.href = contactUrl(p);
-
-    const phone = modal.querySelector("[data-contact-phone]");
-    phone.href = `tel:${CONTACT_PHONE}`;
-
-    const email = modal.querySelector("[data-contact-email]");
-    email.href = emailUrl(p);
-
-    modal.hidden = false;
-    modal.setAttribute("aria-hidden", "false");
-    modal.style.setProperty("display", "flex", "important");
-
-    document.body.style.overflow = "hidden";
-
-    modal.querySelector(".contact-choice-close").focus();
-  }
-
-  function closeContactChoices() {
-    const modal = $("contact-choice-modal");
-
-    if (!modal || modal.hidden) return;
-
-    modal.style.setProperty("display", "none", "important");
-    modal.hidden = true;
-    modal.setAttribute("aria-hidden", "true");
-
-    document.body.style.overflow =
-      $("product-modal") && !$("product-modal").hidden
-        ? "hidden"
-        : "";
-
-    if (
-      contactLastFocusedElement &&
-      typeof contactLastFocusedElement.focus === "function"
-    ) {
-      contactLastFocusedElement.focus();
-    }
-
-    contactCurrentProduct = null;
-  }
-
-  /* =========================================
-     ФИЛЬТРЫ КАТАЛОГА
-     ========================================= */
 
   function setFilters() {
-    const categories = [
-      ...new Set(products.map(p => p.category).filter(Boolean))
-    ].sort((a, b) => a.localeCompare(b, "pl"));
+    const categories = [...new Set(
+      products.map(p => p.category).filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'pl'));
 
-    const makes = [
-      ...new Set(products.map(p => p.make).filter(Boolean))
-    ].sort((a, b) => a.localeCompare(b, "pl"));
+    const makes = [...new Set(
+      products.map(p => p.make).filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'pl'));
 
-    const cat = $("category-filter");
-    const make = $("make-filter");
+    const previousCategory = categoryFilter?.value || '';
+    const previousMake = makeFilter?.value || '';
 
-    const oldCat = cat.value;
-    const oldMake = make.value;
+    if (categoryFilter) {
+      categoryFilter.innerHTML =
+        '<option value="">Wszystkie kategorie</option>' +
+        categories.map(value =>
+          `<option value="${esc(value)}">${esc(value)}</option>`
+        ).join('');
 
-    cat.innerHTML =
-      '<option value="">Wszystkie kategorie</option>' +
-      categories.map(v =>
-        `<option value="${esc(v)}">${esc(v)}</option>`
-      ).join("");
-
-    make.innerHTML =
-      '<option value="">Wszystkie marki</option>' +
-      makes.map(v =>
-        `<option value="${esc(v)}">${esc(v)}</option>`
-      ).join("");
-
-    cat.value = oldCat;
-    make.value = oldMake;
-  }
-
-  function vehicleDetailsMarkup(v) {
-    if (!v) {
-      return `
-        <section class="product-vehicle">
-          <h3>Dane samochodu</h3>
-          <p>Brak przypisanych danych samochodu.</p>
-        </section>`;
+      categoryFilter.value = categories.includes(previousCategory)
+        ? previousCategory : '';
     }
 
-    const fields = [
-      ["Marka", v.make],
-      ["Model", v.model],
-      ["Rok produkcji", v.year],
-      ["Silnik", v.engine],
-      ["VIN", v.vin],
-      ["Paliwo", v.fuel],
-      ["Skrzynia biegów", v.transmission],
-      ["Napęd", v.drivetrain],
-      ["Strona kierownicy", v.steering_side],
-      ["Uwagi", v.notes]
-    ];
+    if (makeFilter) {
+      makeFilter.innerHTML =
+        '<option value="">Wszystkie marki</option>' +
+        makes.map(value =>
+          `<option value="${esc(value)}">${esc(value)}</option>`
+        ).join('');
 
-    const rows = fields
-      .filter(([, value]) =>
-        value !== null &&
-        value !== undefined &&
-        String(value).trim() !== ""
-      )
-      .map(([label, value]) => `
-        <div class="vehicle-detail-row">
-          <span>${esc(label)}</span>
-          <strong>${esc(value)}</strong>
-        </div>`
-      ).join("");
-
-    return `
-      <section class="product-vehicle">
-        <h3>Dane samochodu</h3>
-        <div class="vehicle-number">
-          Numer rozbiórkowy:
-          <strong>${esc(v.dismantling_number || "—")}</strong>
-        </div>
-        <div class="vehicle-detail-list">
-          ${rows || "<p>Brak dodatkowych danych.</p>"}
-        </div>
-      </section>`;
-  }
-
-  /* =========================================
-     ОКНО ПОДРОБНОСТЕЙ ТОВАРА
-     ========================================= */
-
-  function ensureModal() {
-    let modal = $("product-modal");
-
-    if (!modal) {
-      modal = document.createElement("div");
-      modal.id = "product-modal";
-      modal.className = "product-modal";
-      modal.hidden = true;
-      modal.setAttribute("aria-hidden", "true");
-
-      modal.innerHTML = `
-        <div class="product-modal-dialog"
-             role="dialog"
-             aria-modal="true"
-             aria-labelledby="modal-product-name">
-          <div class="product-modal-topbar">
-            <button type="button"
-                    id="product-modal-close"
-                    class="product-modal-close"
-                    aria-label="Zamknij">×</button>
-          </div>
-          <div id="product-modal-content"
-               class="product-modal-content"></div>
-        </div>`;
-
-      document.body.appendChild(modal);
-    }
-
-    const dialog = modal.querySelector(".product-modal-dialog");
-    const topbar = modal.querySelector(".product-modal-topbar");
-    const close = $("product-modal-close");
-    const content = $("product-modal-content");
-
-    Object.assign(modal.style, {
-      position: "fixed",
-      inset: "0",
-      zIndex: "2147483000",
-      display: "none",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "0",
-      overflow: "hidden",
-      boxSizing: "border-box"
-    });
-
-    Object.assign(dialog.style, {
-      position: "relative",
-      width: "100%",
-      maxWidth: "760px",
-      height: "100%",
-      maxHeight: "100%",
-      overflowY: "auto",
-      overscrollBehavior: "contain",
-      WebkitOverflowScrolling: "touch",
-      background: "#fff",
-      color: "#202925",
-      borderRadius: "0",
-      boxSizing: "border-box"
-    });
-
-    Object.assign(topbar.style, {
-      position: "sticky",
-      top: "0",
-      zIndex: "100",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "flex-end",
-      width: "100%",
-      height: "58px",
-      minHeight: "58px",
-      padding: "8px 12px",
-      background: "#fff",
-      borderBottom: "1px solid #edf0ee",
-      boxSizing: "border-box"
-    });
-
-    Object.assign(close.style, {
-      position: "relative",
-      top: "auto",
-      right: "auto",
-      left: "auto",
-      bottom: "auto",
-      float: "none",
-      zIndex: "101",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flex: "0 0 42px",
-      width: "42px",
-      height: "42px",
-      minWidth: "42px",
-      minHeight: "42px",
-      margin: "0",
-      padding: "0",
-      border: "0",
-      borderRadius: "50%",
-      background: "#edf0ee",
-      color: "#202925",
-      fontFamily: "Arial, sans-serif",
-      fontSize: "29px",
-      fontWeight: "400",
-      lineHeight: "1",
-      cursor: "pointer",
-      boxSizing: "border-box",
-      appearance: "none",
-      WebkitAppearance: "none"
-    });
-
-    Object.assign(content.style, {
-      display: "block",
-      padding: "24px",
-      paddingTop: "24px",
-      boxSizing: "border-box"
-    });
-
-    if (window.matchMedia("(max-width: 560px)").matches) {
-      Object.assign(modal.style, {
-        alignItems: "stretch",
-        justifyContent: "stretch"
-      });
-
-      Object.assign(dialog.style, {
-        width: "100%",
-        maxWidth: "none",
-        height: "100dvh",
-        maxHeight: "100dvh",
-        borderRadius: "0"
-      });
-
-      Object.assign(content.style, {
-        padding: "16px"
-      });
-    }
-
-    return modal;
-  }
-
-  function renderGallery(index) {
-    if (!activeGalleryUrls.length) {
-      activeGalleryUrls = [placeholder];
-    }
-
-    activeGalleryIndex =
-      (index + activeGalleryUrls.length) % activeGalleryUrls.length;
-
-    const main = $("gallery-main-image");
-    if (!main) return;
-
-    main.src = activeGalleryUrls[activeGalleryIndex];
-    main.alt = `Zdjęcie ${activeGalleryIndex + 1}`;
-
-    const counter = $("gallery-counter");
-
-    if (counter) {
-      counter.textContent =
-        `${activeGalleryIndex + 1} / ${activeGalleryUrls.length}`;
-    }
-
-    const prev = $("gallery-prev");
-    const next = $("gallery-next");
-    const multiple = activeGalleryUrls.length > 1;
-
-    if (prev) prev.hidden = !multiple;
-    if (next) next.hidden = !multiple;
-
-    document.querySelectorAll("[data-gallery-index]").forEach(button => {
-      const selected =
-        Number(button.dataset.galleryIndex) === activeGalleryIndex;
-
-      button.style.border = selected
-        ? "2px solid #1b6b48"
-        : "2px solid transparent";
-
-      button.setAttribute(
-        "aria-pressed",
-        selected ? "true" : "false"
-      );
-    });
-  }
-
-  function openProduct(p) {
-    const modal = ensureModal();
-    const content = $("product-modal-content");
-
-    lastFocusedElement = document.activeElement;
-
-    activeGalleryUrls = galleryFor(p);
-
-    if (!activeGalleryUrls.length) {
-      activeGalleryUrls = [placeholder];
-    }
-
-    activeGalleryIndex = 0;
-
-    const thumbnails = activeGalleryUrls.length > 1
-      ? `<div class="gallery-thumbnails"
-              style="display:flex;gap:8px;overflow-x:auto;margin-top:10px;padding-bottom:5px">
-          ${activeGalleryUrls.map((url, index) => `
-            <button type="button"
-                    data-gallery-index="${index}"
-                    aria-label="Pokaż zdjęcie ${index + 1}"
-                    aria-pressed="${index === 0 ? "true" : "false"}"
-                    style="flex:0 0 64px;width:64px;height:64px;padding:2px;border:2px solid ${index === 0 ? "#1b6b48" : "transparent"};border-radius:6px;background:#f1f3f2;cursor:pointer">
-              <img src="${esc(url)}"
-                   alt=""
-                   loading="lazy"
-                   style="width:100%;height:100%;object-fit:contain">
-            </button>`
-          ).join("")}
-        </div>`
-      : "";
-
-    content.innerHTML = `
-      <div class="product-modal-main"
-           style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:24px;margin-bottom:24px">
-        <div class="product-gallery">
-          <div style="position:relative;background:#f1f3f2;border-radius:8px;overflow:hidden">
-            <img id="gallery-main-image"
-                 class="product-modal-image"
-                 src="${esc(activeGalleryUrls[0])}"
-                 alt="${esc(p.name || "Część samochodowa")}"
-                 style="display:block;width:100%;aspect-ratio:4/3;object-fit:contain">
-
-            <button type="button"
-                    id="gallery-prev"
-                    aria-label="Poprzednie zdjęcie"
-                    style="position:absolute;left:8px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;border-radius:50%;background:#ffffffdf;font-size:24px;cursor:pointer">‹</button>
-
-            <button type="button"
-                    id="gallery-next"
-                    aria-label="Następne zdjęcie"
-                    style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;border-radius:50%;background:#ffffffdf;font-size:24px;cursor:pointer">›</button>
-
-            <span id="gallery-counter"
-                  style="position:absolute;right:10px;bottom:10px;padding:4px 8px;border-radius:20px;background:#202925cc;color:#fff;font-size:12px"></span>
-          </div>
-          ${thumbnails}
-        </div>
-
-        <div>
-          <p class="product-modal-category">
-            ${esc(p.category || "Części samochodowe")}
-          </p>
-
-          <h2 id="modal-product-name"
-              class="product-modal-title"
-              style="overflow-wrap:anywhere">
-            ${esc(p.name || "Część samochodowa")}
-          </h2>
-
-          <div class="product-modal-fitment">
-            ${esc(
-              [p.make, p.model, p.years].filter(Boolean).join(" · ") ||
-              "Zapytaj o dopasowanie"
-            )}
-          </div>
-
-          ${p.oem
-            ? `<div class="product-modal-oem"><b>OEM:</b> ${esc(p.oem)}</div>`
-            : ""}
-
-          <div><b>Status:</b> ${esc(statusText(p.status))}</div>
-          <div class="product-modal-price">${money(p.price)}</div>
-
-          ${p.description
-            ? `<div class="product-modal-description">${esc(p.description)}</div>`
-            : ""}
-
-          <div class="product-modal-actions">
-            <button
-              type="button"
-              class="button button-green"
-              id="product-modal-ask-button"
-            >Zapytaj o część ↗</button>
-          </div>
-        </div>
-      </div>
-
-      ${vehicleDetailsMarkup(p.vehicle || null)}
-    `;
-
-    $("gallery-prev").addEventListener(
-      "click",
-      () => renderGallery(activeGalleryIndex - 1)
-    );
-
-    $("gallery-next").addEventListener(
-      "click",
-      () => renderGallery(activeGalleryIndex + 1)
-    );
-
-    content.querySelectorAll("[data-gallery-index]").forEach(button => {
-      button.addEventListener("click", () => {
-        renderGallery(Number(button.dataset.galleryIndex));
-      });
-    });
-
-    $("product-modal-ask-button").addEventListener("click", () => {
-      openContactChoices(p);
-    });
-
-    renderGallery(0);
-
-    modal.hidden = false;
-    modal.setAttribute("aria-hidden", "false");
-    modal.style.setProperty("display", "flex", "important");
-
-    document.body.classList.add("modal-open");
-    document.body.style.overflow = "hidden";
-
-    $("product-modal-close").focus();
-  }
-
-  function closeProduct() {
-    const modal = $("product-modal");
-
-    if (!modal || modal.hidden) return;
-
-    modal.style.setProperty("display", "none", "important");
-    modal.hidden = true;
-    modal.setAttribute("aria-hidden", "true");
-
-    document.body.classList.remove("modal-open");
-    document.body.style.overflow = "";
-
-    if (
-      lastFocusedElement &&
-      typeof lastFocusedElement.focus === "function"
-    ) {
-      lastFocusedElement.focus();
+      makeFilter.value = makes.includes(previousMake) ? previousMake : '';
     }
   }
-
-  /* =========================================
-     РЕНДЕР КАРТОЧЕК
-     ========================================= */
 
   function render() {
-    const term = $("search").value.trim().toLocaleLowerCase("pl");
-    const category = $("category-filter").value;
-    const make = $("make-filter").value;
+    const term = (searchInput?.value || '').trim().toLocaleLowerCase('pl');
+    const category = categoryFilter?.value || '';
+    const make = makeFilter?.value || '';
 
-    const filtered = products.filter(p =>
-      p.status !== "sold" &&
-      (!category || p.category === category) &&
-      (!make || p.make === make) &&
-      (
-        !term ||
-        [
-          p.name,
-          p.category,
-          p.make,
-          p.model,
-          p.years,
-          p.oem,
-          p.description,
-          p.vehicle?.dismantling_number,
-          p.vehicle?.vin,
-          p.vehicle?.engine
-        ].some(v =>
-          String(v || "").toLocaleLowerCase("pl").includes(term)
-        )
-      )
-    );
+    const filtered = products.filter(product => {
+      if (product.status === 'sold') return false;
+      if (category && product.category !== category) return false;
+      if (make && product.make !== make) return false;
 
-    grid.innerHTML = "";
+      if (!term) return true;
 
-    filtered.forEach(p => {
-      const el = $("product-template").content.cloneNode(true);
-      const card = el.querySelector(".product-card");
-      const img = el.querySelector(".product-image");
-      const gallery = galleryFor(p);
+      const searchable = [
+        product.name,
+        product.category,
+        product.make,
+        product.model,
+        product.years,
+        product.oem,
+        product.description,
+        product.vehicle?.dismantling_number
+      ].join(' ').toLocaleLowerCase('pl');
 
-      img.src = gallery[0] || placeholder;
-      img.alt = p.name || "Część samochodowa";
-
-      const badge = el.querySelector(".stock-badge");
-
-      badge.textContent =
-        p.status === "reserved"
-          ? "Zapytaj o dostępność"
-          : statusText(p.status);
-
-      badge.classList.add(p.status || "available");
-
-      el.querySelector(".product-category").textContent =
-        p.category || "Części samochodowe";
-
-      el.querySelector(".product-name").textContent = p.name || "";
-
-      el.querySelector(".product-fitment").textContent =
-        [p.make, p.model, p.years].filter(Boolean).join(" · ") ||
-        "Zapytaj o dopasowanie";
-
-      el.querySelector(".product-oem").textContent =
-        p.oem ? "OEM: " + p.oem : "";
-
-      el.querySelector(".product-price").textContent = money(p.price);
-
-      el.querySelector(".product-details-button")
-        .addEventListener("click", e => {
-          e.preventDefault();
-          e.stopPropagation();
-          openProduct(p);
-        });
-
-      /*
-       * Старую ссылку .product-contact заменяем кнопкой.
-       * Поэтому править шаблон карточки в index.html не нужно.
-       */
-      let contact = el.querySelector(".product-contact");
-
-      if (contact) {
-        const askButton = document.createElement("button");
-
-        askButton.type = "button";
-        askButton.className = "product-contact-button";
-        askButton.textContent = "Zapytaj o część ↗";
-        askButton.setAttribute(
-          "aria-label",
-          `Zapytaj o część: ${p.name || "część samochodowa"}`
-        );
-
-        Object.assign(askButton.style, {
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "7px",
-          minHeight: "42px",
-          padding: "10px 14px",
-          border: "1px solid #1b6b48",
-          borderRadius: "7px",
-          background: "#1b6b48",
-          color: "#ffffff",
-          fontFamily: "inherit",
-          fontSize: "13px",
-          fontWeight: "700",
-          lineHeight: "1.3",
-          textAlign: "center",
-          textDecoration: "none",
-          cursor: "pointer",
-          boxSizing: "border-box"
-        });
-
-        askButton.addEventListener("mouseenter", () => {
-          askButton.style.background = "#15563a";
-          askButton.style.borderColor = "#15563a";
-        });
-
-        askButton.addEventListener("mouseleave", () => {
-          askButton.style.background = "#1b6b48";
-          askButton.style.borderColor = "#1b6b48";
-        });
-
-        askButton.addEventListener("click", event => {
-          event.preventDefault();
-          event.stopPropagation();
-          openContactChoices(p);
-        });
-
-        contact.replaceWith(askButton);
-      }
-
-      card.addEventListener("click", e => {
-        if (!e.target.closest("a, button")) {
-          openProduct(p);
-        }
-      });
-
-      card.setAttribute("aria-label", p.name || "Część samochodowa");
-
-      grid.appendChild(el);
+      return searchable.includes(term);
     });
 
-    $("results-count").textContent =
-      `${filtered.length} ${
-        filtered.length === 1
-          ? "produkt"
-          : filtered.length < 5
-            ? "produkty"
-            : "produktów"
-      }`;
+    grid.innerHTML = '';
 
-    $("empty-state").hidden = filtered.length !== 0;
+    const template = $('product-template');
+
+    if (template) {
+      filtered.forEach(product => {
+        const element = template.content.cloneNode(true);
+        const card = element.querySelector('.product-card');
+        const image = element.querySelector('.product-image');
+        const badge = element.querySelector('.stock-badge');
+
+        if (image) {
+          image.src = product.image_url || placeholder;
+          image.alt = product.name || 'Część samochodowa';
+          image.onerror = () => {
+            image.onerror = null;
+            image.src = placeholder;
+          };
+        }
+
+        if (badge) {
+          badge.textContent = statusText(product.status);
+          badge.classList.add(product.status || 'available');
+        }
+
+        const categoryElement = element.querySelector('.product-category');
+        if (categoryElement) {
+          categoryElement.textContent = product.category || 'Części samochodowe';
+        }
+
+        const nameElement = element.querySelector('.product-name');
+        if (nameElement) nameElement.textContent = product.name || 'Część samochodowa';
+
+        const fitmentElement = element.querySelector('.product-fitment');
+        if (fitmentElement) {
+          fitmentElement.textContent =
+            [product.make, product.model, product.years].filter(Boolean).join(' · ') ||
+            'Zapytaj o dopasowanie';
+        }
+
+        const oemElement = element.querySelector('.product-oem');
+        if (oemElement) {
+          oemElement.textContent = product.oem ? `OEM: ${product.oem}` : '';
+        }
+
+        const priceElement = element.querySelector('.product-price');
+        if (priceElement) priceElement.textContent = money(product.price);
+
+        const contact = element.querySelector('.product-contact');
+        if (contact) {
+          contact.href = contactUrl(product);
+          contact.target = '_blank';
+          contact.rel = 'noopener noreferrer';
+          contact.textContent = 'Zapytaj o część ↗';
+        }
+
+        if (card) card.setAttribute('aria-label', product.name || 'Część samochodowa');
+        grid.appendChild(element);
+      });
+    }
+
+    if (resultsCount) {
+      const count = filtered.length;
+      resultsCount.textContent =
+        `${count} ${count === 1 ? 'produkt' : count < 5 ? 'produkty' : 'produktów'}`;
+    }
+
+    if (emptyState) emptyState.hidden = filtered.length !== 0;
   }
 
-  /* =========================================
-     ЗАГРУЗКА КАТАЛОГА
-     ========================================= */
+  async function loadProducts() {
+    const configured =
+      cfg.SUPABASE_URL &&
+      !cfg.SUPABASE_URL.includes('YOUR-PROJECT') &&
+      cfg.SUPABASE_ANON_KEY &&
+      !cfg.SUPABASE_ANON_KEY.includes('YOUR_');
 
-  async function load() {
-    if (!client) {
-      products = demo;
-      setFilters();
+    if (!configured || !window.supabase) {
+      products = [];
       render();
-
-      $("catalog-status").hidden = false;
-      $("catalog-status").textContent =
-        "Tryb demonstracyjny: widzisz przykładowe produkty. Sprawdź konfigurację Supabase.";
-
+      showStatus(
+        'Nie można uruchomić połączenia z Supabase. Sprawdź, czy config.js i biblioteka Supabase są prawidłowo załadowane.',
+        true
+      );
       return;
     }
 
     try {
+      client = window.supabase.createClient(
+        cfg.SUPABASE_URL,
+        cfg.SUPABASE_ANON_KEY
+      );
+
+      // Celowo bez order('created_at'): nie każda istniejąca tabela
+      // musi zawierać kolumnę created_at.
       const { data, error } = await client
-        .from("products")
-        .select("*, vehicle:vehicles(*)")
-        .order("created_at", { ascending: false })
+        .from('products')
+        .select('*')
         .limit(5000);
 
       if (error) throw error;
 
-      products = data || [];
+      products = Array.isArray(data) ? data : [];
       setFilters();
       render();
 
-      $("catalog-status").hidden = products.length > 0;
-
-      if (!products.length) {
-        $("catalog-status").textContent =
-          "Katalog jest jeszcze pusty. Dodaj pierwsze części w panelu administratora.";
+      if (products.length === 0) {
+        showStatus(
+          'Połączenie działa, ale katalog nie zwrócił produktów. Sprawdź uprawnienia SELECT (RLS) dla tabeli products.'
+        );
+      } else {
+        hideStatus();
       }
-    } catch (e) {
-      console.error("ARVORN catalog error:", e);
+    } catch (error) {
+      console.error('TRIPL PARTS — błąd ładowania katalogu:', error);
 
       products = [];
       render();
 
-      $("catalog-status").hidden = false;
-      $("catalog-status").textContent =
-        "Nie udało się pobrać katalogu. Sprawdź konfigurację Supabase.";
+      const details = error?.message
+        ? ` Szczegóły: ${error.message}`
+        : '';
+
+      showStatus(
+        `Nie udało się pobrać katalogu z Supabase.${details}`,
+        true
+      );
     }
   }
 
-  /* =========================================
-     СОБЫТИЯ И КОНТАКТЫ САЙТА
-     ========================================= */
+  if (searchInput) searchInput.addEventListener('input', render);
+  if (categoryFilter) categoryFilter.addEventListener('change', render);
+  if (makeFilter) makeFilter.addEventListener('change', render);
 
-  ["search", "category-filter", "make-filter"].forEach(id => {
-    $(id).addEventListener(
-      id === "search" ? "input" : "change",
-      render
-    );
-  });
-
-  ensureModal();
-  ensureContactModal();
-
-  $("product-modal-close").addEventListener("click", closeProduct);
-
-  $("product-modal").addEventListener("click", e => {
-    if (e.target === $("product-modal")) {
-      closeProduct();
-    }
-  });
-
-  document.addEventListener("keydown", e => {
-    if (e.key === "Escape") {
-      const contactModal = $("contact-choice-modal");
-
-      if (contactModal && !contactModal.hidden) {
-        closeContactChoices();
-        return;
-      }
-
-      closeProduct();
-    }
-
-    if (
-      !$("product-modal").hidden &&
-      e.key === "ArrowRight"
-    ) {
-      renderGallery(activeGalleryIndex + 1);
-    }
-
-    if (
-      !$("product-modal").hidden &&
-      e.key === "ArrowLeft"
-    ) {
-      renderGallery(activeGalleryIndex - 1);
-    }
-  });
-
-  // WhatsApp — główny numer kontaktowy
-  const w = $("whatsapp-cta");
-
-  if (w) {
-    w.href = `https://wa.me/${CONTACT_WHATSAPP}`;
-    w.target = "_blank";
-    w.rel = "noopener";
+  const whatsappButton = $('whatsapp-cta');
+  if (whatsappButton) {
+    const number = getWhatsAppNumber();
+    whatsappButton.href = number ? `https://wa.me/${number}` : 'https://wa.me/';
+    whatsappButton.target = '_blank';
+    whatsappButton.rel = 'noopener noreferrer';
   }
 
-  // Telefon
-  const ph = $("phone-cta");
-
-  if (ph) {
-    ph.href = `tel:${CONTACT_PHONE}`;
+  const phoneButton = $('phone-cta');
+  if (phoneButton) {
+    const phone = String(cfg.PHONE_NUMBER || '').replace(/[^\d+]/g, '');
+    phoneButton.href = phone ? `tel:${phone}` : '#';
   }
 
-  // E-mail
-  const em = $("email-cta");
-
-  if (em) {
-    em.href = `mailto:${CONTACT_EMAIL}`;
-  }
-
-  // Kontakty w nagłówku
-  const headerWhatsApp = document.querySelector(".header-whatsapp");
-
-  if (headerWhatsApp) {
-    headerWhatsApp.href = `https://wa.me/${CONTACT_WHATSAPP}`;
-    headerWhatsApp.target = "_blank";
-    headerWhatsApp.rel = "noopener";
-  }
-
-  const headerPhone = document.querySelector(".header-phone");
-
-  if (headerPhone) {
-    headerPhone.href = `tel:${CONTACT_PHONE}`;
-  }
-
-  load();
+  loadProducts();
 })();
