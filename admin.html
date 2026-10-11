@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pl">
 <head>
@@ -8,9 +9,44 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script defer src="admin.js"></script>
+<style>
+.gallery-admin {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.gallery-admin-item {
+  min-width: 0;
+  border: 1px solid #dfe5e1;
+  border-radius: 8px;
+  padding: 8px;
+  background: #f7f9f8;
+}
+.gallery-admin-item img {
+  display: block;
+  width: 100%;
+  height: 100px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 5px;
+}
+.gallery-admin-item label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.gallery-count {
+  font-size: 13px;
+  color: #65716a;
+  margin-top: 8px;
+}
+</style>
 </head>
 <body class="admin-body">
-
 <header class="topbar">
 <a class="brand" href="./">
 <span class="brand-mark">A</span>
@@ -46,7 +82,6 @@
 </section>
 
 <section id="dashboard" hidden>
-
 <div class="admin-toolbar">
 <div>
 <h2>Panel zarządzania</h2>
@@ -117,7 +152,6 @@
 </form>
 
 <p id="vehicle-form-message" class="form-message" role="status"></p>
-
 <h3>Dodane samochody</h3>
 <div class="table-scroll">
 <table>
@@ -144,31 +178,24 @@
 <label>Nazwa części *
 <input id="p-name" required maxlength="140" placeholder="np. Lampa przednia lewa">
 </label>
-
 <label>Kategoria *
 <input id="p-category" required maxlength="80" placeholder="np. Oświetlenie">
 </label>
-
 <label>Marka auta
 <input id="p-make" maxlength="80" placeholder="np. Mercedes-Benz">
 </label>
-
 <label>Model auta
 <input id="p-model" maxlength="100" placeholder="np. M W164">
 </label>
-
 <label>Rok / zakres lat
 <input id="p-years" maxlength="60" placeholder="np. 2006">
 </label>
-
 <label>Numer OEM / indeks
 <input id="p-oem" maxlength="100" placeholder="Numer części">
 </label>
-
 <label>Cena (PLN) *
 <input id="p-price" required type="number" min="0" step="0.01" placeholder="250.00">
 </label>
-
 <label>Status
 <select id="p-status">
 <option value="available">Dostępna</option>
@@ -181,12 +208,17 @@
 <textarea id="p-description" rows="3" maxlength="2000" placeholder="Stan, numer magazynowy, uwagi…"></textarea>
 </label>
 
-<label class="full">Zdjęcie części
-<input id="p-image" type="file" accept="image/jpeg,image/png,image/webp">
-<small>JPG, PNG lub WebP. Zalecane zdjęcia do 1 MB.</small>
+<label class="full">Zdjęcia części — maksymalnie 20
+<input id="p-image" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+<small>Wybierz jedno lub kilka zdjęć. JPG, PNG lub WebP. Maksymalnie 5 MB na zdjęcie. Przy edycji nowe zdjęcia zostaną dodane do istniejącej galerii.</small>
 </label>
 
-<div id="current-image" class="full current-image" hidden></div>
+<div class="full">
+<strong>Galeria zdjęć</strong>
+<p class="gallery-count" id="gallery-count">0 z 20 zdjęć</p>
+<div id="current-image" class="gallery-admin" aria-live="polite"></div>
+<p class="gallery-count">Отметь «Удалить», чтобы убрать фотографию из товара. Остальные фотографии сохранятся.</p>
+</div>
 
 <div class="form-actions full">
 <button class="button button-dark" type="submit" id="save-product">Zapisz część</button>
@@ -208,9 +240,8 @@
 <tbody id="inventory-body"></tbody>
 </table>
 </div>
-<p id="inventory-message" class="form-message"></p>
+<p id="inventory-message" class="form-message" role="status"></p>
 </section>
-
 </section>
 </main>
 
