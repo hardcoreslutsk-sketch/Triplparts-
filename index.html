@@ -3,15 +3,59 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="description" content="Używane części samochodowe. Wyszukaj część i skontaktuj się z nami przez WhatsApp, telefon lub e-mail.">
-  <title>ARVORN Auto Parts — używane części samochodowe</title>
+  <meta name="description" content="TRIPL PARTS — używane części samochodowe. Wyszukaj część i skontaktuj się z nami przez WhatsApp, telefon lub e-mail.">
+  <meta name="theme-color" content="#13232d">
+  <title>TRIPL PARTS — używane części samochodowe</title>
 
   <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/png" href="tripl-parts-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script defer src="app.js"></script>
 
   <style>
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      letter-spacing: normal;
+      flex-shrink: 0;
+    }
+
+    .brand-logo {
+      display: block;
+      width: 54px;
+      height: 54px;
+      flex: 0 0 54px;
+      object-fit: contain;
+      border-radius: 50%;
+      background: #13232d;
+    }
+
+    .brand b {
+      display: block;
+      font-family: Manrope, sans-serif;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      line-height: 1.25;
+      color: #15212a;
+    }
+
+    .brand small {
+      display: block;
+      margin-top: 4px;
+      color: #68747b;
+      font-size: 9px;
+      letter-spacing: .19em;
+    }
+
+    .brand-footer .brand-logo {
+      width: 46px;
+      height: 46px;
+      flex-basis: 46px;
+    }
+
     .header-actions {
       display: flex;
       align-items: center;
@@ -42,6 +86,13 @@
       transform: translateY(-1px);
     }
 
+    .header-contact-button:focus-visible,
+    .site-contact-close:focus-visible,
+    .site-contact-option:focus-visible {
+      outline: 3px solid #f26a36;
+      outline-offset: 3px;
+    }
+
     .header-contact-button .contact-button-icon {
       font-size: 17px;
       line-height: 1;
@@ -51,7 +102,8 @@
       white-space: nowrap;
     }
 
-    .site-contact-modal[hidden] {
+    .site-contact-modal[hidden],
+    .product-modal[hidden] {
       display: none !important;
     }
 
@@ -199,12 +251,9 @@
       font-size: 18px;
     }
 
-    body.site-contact-open {
+    body.site-contact-open,
+    body.modal-open {
       overflow: hidden !important;
-    }
-
-    .product-card {
-      cursor: pointer;
     }
 
     .product-actions {
@@ -273,10 +322,6 @@
     .product-contact-button:hover {
       border-color: #15563a;
       background: #15563a;
-    }
-
-    .product-modal[hidden] {
-      display: none !important;
     }
 
     .product-modal {
@@ -481,8 +526,16 @@
       text-align: center;
     }
 
-    body.modal-open {
-      overflow: hidden !important;
+    @media(max-width:1000px) {
+      .product-grid {
+        grid-template-columns: repeat(3,minmax(0,1fr));
+      }
+
+      .hero-art {
+        transform: scale(.8);
+        transform-origin: right center;
+        margin-left: -45px;
+      }
     }
 
     @media(max-width:900px) {
@@ -491,29 +544,162 @@
       }
     }
 
-    @media(max-width:560px) {
+    @media(max-width:720px) {
       .topbar {
         min-height: 66px;
-        padding: 12px 14px;
+        padding: 12px 18px;
+      }
+
+      .hero {
+        padding: 48px 24px;
+        min-height: 360px;
+      }
+
+      .hero-art {
+        position: absolute;
+        right: -80px;
+        bottom: -40px;
+        opacity: .28;
+        transform: scale(.9);
+      }
+
+      .hero-copy {
+        max-width: 100%;
+      }
+
+      .hero h1 {
+        font-size: 48px;
+      }
+
+      .catalog-section {
+        padding: 45px 17px 52px;
+      }
+
+      .section-heading {
+        align-items: start;
+        flex-direction: column;
+        gap: 9px;
+      }
+
+      .search-row {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .searchbox {
+        grid-column: 1/-1;
+        min-height: 47px;
+      }
+
+      .product-grid {
+        grid-template-columns: repeat(2,minmax(0,1fr));
+        gap: 10px;
+      }
+
+      .product-image-wrap {
+        height: 145px;
+      }
+
+      .product-info {
+        padding: 12px;
+      }
+
+      .product-name {
+        font-size: 14px;
+        min-height: 38px;
+      }
+
+      .product-price {
+        font-size: 16px;
+      }
+
+      .product-contact {
+        font-size: 10px;
+      }
+
+      .product-bottom {
+        align-items: start;
+        flex-direction: column;
+        gap: 7px;
+      }
+
+      .admin-main {
+        padding: 32px 14px 45px;
+      }
+
+      .admin-panel {
+        padding: 17px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+        gap: 13px;
+      }
+
+      .form-grid label,
+      .full {
+        grid-column: 1;
+      }
+
+      .inventory-heading {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .inventory-heading input {
+        max-width: none;
+      }
+
+      .admin-toolbar h2 {
+        font-size: 19px;
+      }
+    }
+
+    @media(max-width:560px) {
+      .topbar {
+        height: auto;
+        min-height: 66px;
+        padding: 10px 12px;
         align-items: center;
+        flex-wrap: nowrap;
+        gap: 8px;
+      }
+
+      .brand {
+        gap: 7px;
+      }
+
+      .brand-logo {
+        width: 43px;
+        height: 43px;
+        flex-basis: 43px;
+      }
+
+      .brand b {
+        font-size: 13px;
+        letter-spacing: .045em;
+      }
+
+      .brand small {
+        font-size: 8px;
+        letter-spacing: .12em;
       }
 
       .header-actions {
         width: auto;
         display: flex;
         flex-wrap: nowrap;
-        gap: 8px;
+        gap: 7px;
       }
 
       .header-contact-button {
-        min-height: 40px;
-        padding: 9px 11px;
+        min-height: 39px;
+        padding: 8px 10px;
         font-size: 12px;
       }
 
       .header-actions .admin-link {
-        padding: 7px 0;
-        font-size: 11px;
+        padding: 6px 0;
+        font-size: 10px;
       }
 
       .site-contact-modal {
@@ -587,11 +773,21 @@
 
     @media(max-width:370px) {
       .brand {
-        gap: 7px;
+        gap: 5px;
+      }
+
+      .brand-logo {
+        width: 37px;
+        height: 37px;
+        flex-basis: 37px;
       }
 
       .brand b {
-        font-size: 13px;
+        font-size: 11px;
+      }
+
+      .brand small {
+        font-size: 7px;
       }
 
       .header-contact-button {
@@ -599,7 +795,27 @@
       }
 
       .header-actions .admin-link {
-        font-size: 10px;
+        font-size: 9px;
+      }
+
+      .product-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .product-image-wrap {
+        height: 200px;
+      }
+
+      .search-row {
+        grid-template-columns: 1fr;
+      }
+
+      .searchbox {
+        grid-column: 1;
+      }
+
+      .hero h1 {
+        font-size: 41px;
       }
     }
   </style>
@@ -607,9 +823,12 @@
 
 <body>
 <header class="topbar">
-  <a class="brand" href="./">
-    <span class="brand-mark">A</span>
-    <span><b>ARVORN</b><small>AUTO PARTS</small></span>
+  <a class="brand" href="./" aria-label="TRIPL PARTS — strona główna">
+    <img class="brand-logo" src="tripl-parts-logo.png" alt="Logo TRIPL PARTS">
+    <span>
+      <b>TRIPL PARTS</b>
+      <small>USED AUTO PARTS</small>
+    </span>
   </a>
 
   <nav class="header-actions" aria-label="Menu">
@@ -634,6 +853,7 @@
       <p>Sprawdź dostępność używanych części samochodowych. Masz numer OEM? Wpisz go i znajdź właściwą część.</p>
       <a class="button button-light" href="#catalog">Przeglądaj katalog <span>↓</span></a>
     </div>
+
     <div class="hero-art" aria-hidden="true">
       <div class="ring ring-one"></div>
       <div class="ring ring-two"></div>
@@ -656,9 +876,11 @@
         <span>⌕</span>
         <input id="search" type="search" placeholder="Szukaj części, OEM, marki lub modelu…" autocomplete="off">
       </label>
+
       <select id="category-filter" aria-label="Kategoria">
         <option value="">Wszystkie kategorie</option>
       </select>
+
       <select id="make-filter" aria-label="Marka">
         <option value="">Wszystkie marki</option>
       </select>
@@ -676,10 +898,14 @@
 </main>
 
 <footer>
-  <a class="brand brand-footer" href="./">
-    <span class="brand-mark">A</span>
-    <span><b>ARVORN</b><small>AUTO PARTS</small></span>
+  <a class="brand brand-footer" href="./" aria-label="TRIPL PARTS — strona główna">
+    <img class="brand-logo" src="tripl-parts-logo.png" alt="Logo TRIPL PARTS">
+    <span>
+      <b>TRIPL PARTS</b>
+      <small>USED AUTO PARTS</small>
+    </span>
   </a>
+
   <p>Używane części samochodowe · Polska</p>
   <small>Przed zakupem potwierdź dostępność i zgodność części z pojazdem.</small>
 </footer>
@@ -718,13 +944,7 @@
   </div>
 </div>
 
-<!-- CONTACTS POPUP -->
-<div
-  id="site-contact-modal"
-  class="site-contact-modal"
-  hidden
-  aria-hidden="true">
-
+<div id="site-contact-modal" class="site-contact-modal" hidden aria-hidden="true">
   <section
     class="site-contact-dialog"
     role="dialog"
@@ -732,24 +952,16 @@
     aria-labelledby="site-contact-title"
     aria-describedby="site-contact-description">
 
-    <button
-      type="button"
-      class="site-contact-close"
-      id="site-contact-close"
-      aria-label="Zamknij okno">×</button>
+    <button type="button" class="site-contact-close" id="site-contact-close" aria-label="Zamknij okno">×</button>
 
-    <p class="site-contact-eyebrow">ARVORN AUTO PARTS</p>
+    <p class="site-contact-eyebrow">TRIPL PARTS</p>
     <h2 class="site-contact-title" id="site-contact-title">Skontaktuj się z nami</h2>
     <p class="site-contact-description" id="site-contact-description">
       Wybierz dogodną formę kontaktu. Jeśli pytasz o konkretną część, skorzystaj z przycisku kontaktowego przy produkcie.
     </p>
 
     <div class="site-contact-options">
-      <a
-        class="site-contact-option whatsapp"
-        href="https://wa.me/48726579717"
-        target="_blank"
-        rel="noopener noreferrer">
+      <a class="site-contact-option whatsapp" href="https://wa.me/48726579717" target="_blank" rel="noopener noreferrer">
         <span class="site-contact-option-icon" aria-hidden="true">◉</span>
         <span class="site-contact-option-content">
           <strong>WhatsApp</strong>
@@ -815,9 +1027,7 @@
   });
 
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && !modal.hidden) {
-      closeContacts();
-    }
+    if (event.key === "Escape" && !modal.hidden) closeContacts();
   });
 })();
 </script>
