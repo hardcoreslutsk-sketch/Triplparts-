@@ -2,107 +2,162 @@
 <html lang="pl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="TRIPL PARTS — panel administratora używanych części samochodowych.">
-  <meta name="theme-color" content="#13232d">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17201c">
   <title>TRIPL PARTS — Panel administratora</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-main { width:min(1180px,calc(100% - 32px)); margin:36px auto 70px; }
+    .admin-panel { background:#fff; border:1px solid #dce2de; border-radius:14px; padding:22px; margin:20px 0; }
+    .admin-toolbar,.inventory-heading,.form-actions,.admin-tabs { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .admin-tabs { justify-content:flex-start; margin:24px 0; border-bottom:1px solid #dce2de; padding-bottom:12px; }
+    .admin-tab { padding:12px 18px; border:1px solid #dce2de; border-radius:9px; background:#fff; color:#17201c; font-weight:700; cursor:pointer; }
+    .admin-tab[aria-selected="true"] { background:#183d2b; color:#fff; border-color:#183d2b; }
+    .admin-tab-panel[hidden], [hidden] { display:none !important; }
+    .form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .form-grid label { display:flex; flex-direction:column; gap:7px; font-size:14px; font-weight:700; }
+    .form-grid input,.form-grid select,.form-grid textarea,.inventory-heading input { box-sizing:border-box; width:100%; min-width:0; padding:12px; border:1px solid #cfd8d2; border-radius:8px; background:#fff; color:#17201c; font:inherit; font-weight:400; }
+    .form-grid input[type=file] { padding:9px; }
+    .full { grid-column:1/-1; }
+    .form-actions { justify-content:flex-start; }
+    .admin-button { border:0; border-radius:8px; padding:11px 15px; font-weight:700; cursor:pointer; background:#183d2b; color:#fff; }
+    .admin-button.secondary { background:#eef2ef; color:#17201c; border:1px solid #d2dbd5; }
+    .admin-button.danger { background:#a72e2e; color:#fff; }
+    .form-message,.notice { margin-top:14px; line-height:1.55; overflow-wrap:anywhere; }
+    .form-message:empty { display:none; }
+    .notice { padding:13px 15px; border-radius:8px; background:#fff1dc; color:#754b16; }
+    .notice.success { background:#e6f4eb; color:#205c37; }
+    .total-pill { display:inline-block; padding:3px 9px; border-radius:20px; background:#e9efeb; font-size:13px; }
+    .table-scroll { width:100%; overflow-x:auto; margin-top:16px; }
+    .table-scroll table { width:100%; border-collapse:collapse; min-width:620px; }
+    .table-scroll th,.table-scroll td { padding:12px 10px; border-bottom:1px solid #e2e7e3; text-align:left; vertical-align:top; }
+    .table-scroll th { font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+    .table-scroll td { font-size:14px; }
+    .row-actions { display:flex; flex-wrap:wrap; gap:6px; }
+    .row-actions button { padding:7px 9px; border-radius:6px; border:1px solid #d2dbd5; background:#fff; cursor:pointer; font-weight:700; }
+    .image-preview-list { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+    .image-preview-item { position:relative; width:100px; }
+    .image-preview-item img { width:100px; height:85px; object-fit:cover; border-radius:8px; border:1px solid #dce2de; }
+    .image-preview-item button { width:100%; margin-top:5px; padding:5px; border:1px solid #dce2de; border-radius:6px; background:#fff; cursor:pointer; }
+    .muted { color:#69756e; font-size:13px; }
+    .admin-footer { padding:24px 16px; text-align:center; color:#69756e; }
+    @media(max-width:650px) {
+      .admin-main { width:calc(100% - 22px); margin-top:22px; }
+      .admin-panel { padding:15px; }
+      .form-grid { grid-template-columns:1fr; }
+      .full { grid-column:1; }
+      .admin-tab { flex:1; padding:11px 8px; font-size:13px; }
+    }
+  </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script defer src="admin.js"></script>
 </head>
 <body class="admin-body">
-  <header class="topbar">
-    <a class="brand" href="./" aria-label="TRIPL PARTS — strona główna">
-      <span class="brand-mark">TP</span>
-      <span>
-        <b>TRIPL PARTS</b>
-        <small>USED AUTO PARTS</small>
-      </span>
-    </a>
-    <a class="admin-link" href="index.html">← Wróć do katalogu</a>
-  </header>
 
-  <main class="admin-main">
-    <div class="section-heading">
-      <div>
-        <span class="eyebrow dark-eyebrow">STREFA WŁAŚCICIELA</span>
-        <h1>Panel administratora</h1>
-        <p>Dodawaj, edytuj i aktualizuj części w katalogu TRIPL PARTS.</p>
+<header class="topbar">
+  <a class="brand" href="index.html" aria-label="TRIPL PARTS">
+    <span><b>TRIPL PARTS</b><small>USED AUTO PARTS</small></span>
+  </a>
+  <a class="admin-link" href="index.html">← Wróć do katalogu</a>
+</header>
+
+<main class="admin-main">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow dark-eyebrow">STREFA WŁAŚCICIELA</span>
+      <h1>Panel administratora</h1>
+      <p>Zarządzaj częściami i rozbieranymi samochodami.</p>
+    </div>
+  </div>
+
+  <div id="setup-warning" class="notice" role="status" hidden></div>
+
+  <section id="login-panel" class="admin-panel">
+    <h2>Logowanie</h2>
+    <p class="muted">Zaloguj się na konto administratora Supabase.</p>
+    <form id="login-form" class="form-grid">
+      <label class="full">
+        Adres e-mail
+        <input type="email" id="email" required autocomplete="username">
+      </label>
+      <label class="full">
+        Hasło
+        <input type="password" id="password" required autocomplete="current-password">
+      </label>
+      <div class="full">
+        <button class="admin-button" type="submit" id="login-button">Zaloguj się</button>
       </div>
+    </form>
+    <p id="login-message" class="form-message" role="status"></p>
+  </section>
+
+  <section id="dashboard" hidden>
+    <div class="admin-toolbar">
+      <div>
+        <h2>Panel zarządzania</h2>
+        <p class="muted">Zapisane dane trafiają do istniejącej bazy Supabase.</p>
+      </div>
+      <button id="logout" type="button" class="admin-button secondary">Wyloguj</button>
     </div>
 
-    <div id="setup-warning" class="notice" hidden></div>
+    <div class="admin-tabs" role="tablist" aria-label="Sekcje panelu">
+      <button class="admin-tab" id="tab-products" type="button"
+        role="tab" aria-selected="true" aria-controls="panel-products">
+        Części
+      </button>
+      <button class="admin-tab" id="tab-vehicles" type="button"
+        role="tab" aria-selected="false" aria-controls="panel-vehicles">
+        Rozbieralnie
+      </button>
+    </div>
 
-    <section id="login-panel" class="admin-panel">
-      <h2>Zaloguj się</h2>
-      <p>Panel jest dostępny tylko dla autoryzowanego administratora.</p>
-
-      <form id="login-form" class="form-grid">
-        <label class="full">
-          Adres e-mail
-          <input type="email" id="email" required autocomplete="username" placeholder="ty@firma.pl">
-        </label>
-
-        <label class="full">
-          Hasło
-          <input type="password" id="password" required autocomplete="current-password" placeholder="Hasło">
-        </label>
-
-        <button class="button button-dark full" type="submit">Zaloguj się</button>
-      </form>
-
-      <p id="login-message" class="form-message" role="status"></p>
-    </section>
-
-    <section id="dashboard" hidden>
-      <div class="admin-toolbar">
-        <div>
-          <h2>Twoje części <span id="admin-total" class="total-pill">0</span></h2>
-          <p>Zmiany zapisują się w bazie danych.</p>
-        </div>
-        <button id="logout" class="button button-outline">Wyloguj</button>
-      </div>
+    <section id="panel-products" class="admin-tab-panel"
+      role="tabpanel" aria-labelledby="tab-products">
 
       <section class="admin-panel">
-        <h2 id="form-title">Dodaj nową część</h2>
+        <h2 id="form-title">Dodaj część</h2>
+        <p class="muted">Pola oznaczone * są wymagane.</p>
 
         <form id="product-form" class="form-grid">
           <input type="hidden" id="product-id">
 
           <label>
             Nazwa części *
-            <input id="p-name" required maxlength="140" placeholder="np. Lampa przednia lewa">
+            <input id="p-name" required maxlength="140"
+              placeholder="np. Skrzynia biegów">
           </label>
 
           <label>
             Kategoria *
-            <input id="p-category" required maxlength="80" placeholder="np. Oświetlenie">
+            <input id="p-category" required maxlength="100"
+              placeholder="np. Skrzynie biegów">
           </label>
 
           <label>
-            Marka auta
-            <input id="p-make" maxlength="80" placeholder="np. BMW">
+            Marka samochodu
+            <input id="p-make" maxlength="80" placeholder="np. Opel">
           </label>
 
           <label>
-            Model auta
-            <input id="p-model" maxlength="100" placeholder="np. Seria 3 E90">
+            Model samochodu
+            <input id="p-model" maxlength="100" placeholder="np. Corsa">
           </label>
 
           <label>
             Rok / zakres lat
-            <input id="p-years" maxlength="60" placeholder="np. 2005–2011">
+            <input id="p-years" maxlength="60" placeholder="np. 2009">
           </label>
 
           <label>
-            Numer OEM / indeks
-            <input id="p-oem" maxlength="100" placeholder="Numer części">
+            Numer OEM
+            <input id="p-oem" maxlength="120" placeholder="Numer katalogowy">
           </label>
 
           <label>
             Cena (PLN) *
-            <input id="p-price" required type="number" min="0" step="0.01" placeholder="250.00">
+            <input id="p-price" required type="number"
+              min="0" step="0.01" placeholder="250.00">
           </label>
 
           <label>
@@ -114,32 +169,54 @@
             </select>
           </label>
 
+          <label>
+            Rozbieralnia / samochód dawca
+            <select id="p-vehicle">
+              <option value="">Bez przypisania</option>
+            </select>
+          </label>
+
+          <label>
+            Numer rozbieralni (jeśli dotyczy)
+            <input id="p-dismantling-number" maxlength="100"
+              placeholder="np. N3185">
+          </label>
+
           <label class="full">
             Opis
-            <textarea id="p-description" rows="3" maxlength="2000" placeholder="Stan, numer magazynowy, uwagi…"></textarea>
+            <textarea id="p-description" rows="4" maxlength="4000"
+              placeholder="Stan części, uwagi i dodatkowe informacje"></textarea>
           </label>
 
           <label class="full">
-            Zdjęcie części
-            <input id="p-image" type="file" accept="image/jpeg,image/png,image/webp">
-            <small>JPG, PNG lub WebP. Zalecane zdjęcia do 1 MB.</small>
+            Zdjęcia części
+            <input id="p-images" type="file"
+              accept="image/jpeg,image/png,image/webp" multiple>
+            <span class="muted">Możesz wybrać kilka zdjęć. Przy edycji istniejące zdjęcia pozostaną, jeśli ich nie usuniesz.</span>
           </label>
 
-          <div id="current-image" class="full current-image" hidden></div>
+          <div class="full">
+            <strong>Zdjęcia zapisane dla tej części</strong>
+            <div id="current-images" class="image-preview-list"></div>
+          </div>
 
-          <div class="form-actions full">
-            <button class="button button-dark" type="submit" id="save-product">Zapisz część</button>
-            <button class="button button-outline" type="button" id="cancel-edit" hidden>Anuluj edycję</button>
+          <div class="full form-actions">
+            <button id="save-product" class="admin-button" type="submit">
+              Zapisz część
+            </button>
+            <button id="cancel-edit" class="admin-button secondary"
+              type="button" hidden>Anuluj edycję</button>
           </div>
         </form>
-
         <p id="form-message" class="form-message" role="status"></p>
       </section>
 
-      <section class="admin-panel inventory-panel">
+      <section class="admin-panel">
         <div class="inventory-heading">
-          <h2>Lista części</h2>
-          <input id="admin-search" type="search" placeholder="Szukaj w swoich częściach…">
+          <h2>Lista części <span id="admin-total" class="total-pill">0</span></h2>
+          <input id="admin-search" type="search"
+            placeholder="Szukaj nazwy, OEM, marki…"
+            aria-label="Szukaj części">
         </div>
 
         <div class="table-scroll">
@@ -147,6 +224,7 @@
             <thead>
               <tr>
                 <th>Część</th>
+                <th>Samochód</th>
                 <th>OEM</th>
                 <th>Cena</th>
                 <th>Status</th>
@@ -156,14 +234,96 @@
             <tbody id="inventory-body"></tbody>
           </table>
         </div>
-
-        <p id="inventory-message" class="form-message"></p>
+        <p id="inventory-message" class="form-message" role="status"></p>
       </section>
     </section>
-  </main>
 
-  <footer>
-    <p>TRIPL PARTS · Panel administracyjny</p>
-  </footer>
+    <section id="panel-vehicles" class="admin-tab-panel"
+      role="tabpanel" aria-labelledby="tab-vehicles" hidden>
+
+      <section class="admin-panel">
+        <h2 id="vehicle-form-title">Dodaj rozbieralnię / samochód dawcę</h2>
+        <p class="muted">Podaj numer rozbieralni i dane samochodu.</p>
+
+        <form id="vehicle-form" class="form-grid">
+          <input type="hidden" id="vehicle-id">
+
+          <label>
+            Numer rozbieralni *
+            <input id="v-dismantling-number" required maxlength="100"
+              placeholder="np. N3185">
+          </label>
+
+          <label>
+            Marka *
+            <input id="v-make" required maxlength="80"
+              placeholder="np. Mercedes Benz">
+          </label>
+
+          <label>
+            Model *
+            <input id="v-model" required maxlength="120"
+              placeholder="np. Klasa S W221">
+          </label>
+
+          <label>
+            Rok
+            <input id="v-years" maxlength="60" placeholder="np. 2006">
+          </label>
+
+          <label>
+            Numer VIN
+            <input id="v-vin" maxlength="80" placeholder="VIN (opcjonalnie)">
+          </label>
+
+          <label>
+            Dodatkowy opis
+            <input id="v-description" maxlength="500"
+              placeholder="np. silnik, wersja, uwagi">
+          </label>
+
+          <div class="full form-actions">
+            <button id="save-vehicle" class="admin-button" type="submit">
+              Zapisz rozbieralnię
+            </button>
+            <button id="cancel-vehicle-edit" class="admin-button secondary"
+              type="button" hidden>Anuluj edycję</button>
+          </div>
+        </form>
+        <p id="vehicle-form-message" class="form-message" role="status"></p>
+      </section>
+
+      <section class="admin-panel">
+        <div class="inventory-heading">
+          <h2>Lista rozbieralni <span id="vehicle-total" class="total-pill">0</span></h2>
+          <input id="vehicle-search" type="search"
+            placeholder="Szukaj numeru, marki lub modelu…"
+            aria-label="Szukaj rozbieralni">
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Numer</th>
+                <th>Marka</th>
+                <th>Model</th>
+                <th>Rok</th>
+                <th>Akcje</th>
+              </tr>
+            </thead>
+            <tbody id="vehicles-body"></tbody>
+          </table>
+        </div>
+        <p id="vehicles-message" class="form-message" role="status"></p>
+      </section>
+    </section>
+  </section>
+</main>
+
+<footer class="admin-footer">
+  TRIPL PARTS · USED AUTO PARTS
+</footer>
+
 </body>
 </html>
