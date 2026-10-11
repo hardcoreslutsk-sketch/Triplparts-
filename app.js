@@ -1,11 +1,14 @@
+
 (() => {
   const cfg = window.APP_CONFIG || {};
+
   const CONTACT_PHONE = "+48726579717";
   const CONTACT_WHATSAPP = "48726579717";
   const CONTACT_EMAIL = "triplparts@gmail.com";
 
   const $ = id => document.getElementById(id);
   const grid = $("product-grid");
+
   if (!grid) return;
 
   const configured =
@@ -89,6 +92,9 @@
   let activeGalleryIndex = 0;
   let activeGalleryUrls = [];
 
+  let contactLastFocusedElement = null;
+  let contactCurrentProduct = null;
+
   const placeholder =
     `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
       '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="440"><rect width="640" height="440" fill="#edf0ef"/><text x="320" y="220" text-anchor="middle" font-family="Arial" font-size="24" fill="#7d898a">ARVORN AUTO PARTS</text></svg>'
@@ -141,20 +147,453 @@
     return [...new Set(urls)].slice(0, 20);
   }
 
+  function productMessage(p) {
+    const v = p?.vehicle || {};
+
+    const lines = [
+      "Dzień dobry, proszę o informację o dostępności części:",
+      `Część: ${p?.name || "Nie podano"}`,
+      p?.make ? `Marka: ${p.make}` : "",
+      p?.model ? `Model: ${p.model}` : "",
+      p?.years ? `Rocznik: ${p.years}` : "",
+      p?.oem ? `OEM: ${p.oem}` : "",
+      v.dismantling_number
+        ? `Numer rozbiórkowy: ${v.dismantling_number}`
+        : "",
+      p?.price !== null && p?.price !== undefined
+        ? `Cena: ${money(p.price)}`
+        : ""
+    ].filter(Boolean);
+
+    return lines.join("\n");
+  }
+
   function contactUrl(p) {
-    const number = CONTACT_WHATSAPP;
+    return `https://wa.me/${CONTACT_WHATSAPP}?text=${encodeURIComponent(
+      productMessage(p)
+    )}`;
+  }
+
+  function emailUrl(p) {
+    const subject = `Zapytanie o część: ${p?.name || "część samochodowa"}`;
+
+    return (
+      `mailto:${CONTACT_EMAIL}` +
+      `?subject=${encodeURIComponent(subject)}` +
+      `&body=${encodeURIComponent(productMessage(p))}`
+    );
+  }
+
+  /* =========================================
+     OKNO WYBORU SPOSOBU KONTAKTU
+     ========================================= */
+
+  function ensureContactModal() {
+    let modal = $("contact-choice-modal");
+
+    if (modal) return modal;
+
+    modal = document.createElement("div");
+    modal.id = "contact-choice-modal";
+    modal.className = "contact-choice-modal";
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+
+    modal.innerHTML = `
+      <div
+        class="contact-choice-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="contact-choice-title"
+      >
+        <div class="contact-choice-header">
+          <div>
+            <div class="contact-choice-eyebrow">
+              ARVORN AUTO PARTS
+            </div>
+            <h2 id="contact-choice-title">
+              Zapytaj o część
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            class="contact-choice-close"
+            aria-label="Zamknij okno"
+          >×</button>
+        </div>
+
+        <div class="contact-choice-body">
+          <p class="contact-choice-description">
+            Wybierz, jak chcesz się z nami skontaktować.
+          </p>
+
+          <div class="contact-choice-product">
+            <strong class="contact-choice-product-name"></strong>
+            <span class="contact-choice-product-details"></span>
+          </div>
+
+          <div class="contact-choice-options">
+            <a
+              class="contact-choice-option contact-choice-whatsapp"
+              data-contact-whatsapp
+              href="#"
+              target="_blank"
+              rel="noopener"
+            >
+              <span class="contact-choice-icon" aria-hidden="true">◉</span>
+              <span class="contact-choice-option-text">
+                <strong>WhatsApp</strong>
+                <small>Wyślij zapytanie o tę część</small>
+              </span>
+              <span class="contact-choice-arrow" aria-hidden="true">↗</span>
+            </a>
+
+            <a
+              class="contact-choice-option contact-choice-phone"
+              data-contact-phone
+              href="tel:+48726579717"
+            >
+              <span class="contact-choice-icon" aria-hidden="true">☎</span>
+              <span class="contact-choice-option-text">
+                <strong>Zadzwoń</strong>
+                <small>Porozmawiaj z nami telefonicznie</small>
+              </span>
+              <span class="contact-choice-arrow" aria-hidden="true">↗</span>
+            </a>
+
+            <a
+              class="contact-choice-option contact-choice-email"
+              data-contact-email
+              href="#"
+            >
+              <span class="contact-choice-icon" aria-hidden="true">✉</span>
+              <span class="contact-choice-option-text">
+                <strong>E-mail</strong>
+                <small>Wyślij wiadomość z danymi części</small>
+              </span>
+              <span class="contact-choice-arrow" aria-hidden="true">↗</span>
+            </a>
+          </div>
+
+          <p class="contact-choice-footnote">
+            Dane wybranej części zostaną dodane do wiadomości.
+          </p>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeButton = modal.querySelector(".contact-choice-close");
+
+    closeButton.addEventListener("click", closeContactChoices);
+
+    modal.addEventListener("click", event => {
+      if (event.target === modal) {
+        closeContactChoices();
+      }
+    });
+
+    const dialog = modal.querySelector(".contact-choice-dialog");
+
+    Object.assign(modal.style, {
+      position: "fixed",
+      inset: "0",
+      zIndex: "2147483500",
+      display: "none",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "20px",
+      overflowY: "auto",
+      background: "rgba(12, 20, 17, 0.68)",
+      boxSizing: "border-box"
+    });
+
+    Object.assign(dialog.style, {
+      width: "100%",
+      maxWidth: "460px",
+      maxHeight: "calc(100dvh - 40px)",
+      overflowY: "auto",
+      overscrollBehavior: "contain",
+      background: "#ffffff",
+      color: "#202925",
+      borderRadius: "18px",
+      boxShadow: "0 24px 80px rgba(0,0,0,.25)",
+      boxSizing: "border-box"
+    });
+
+    const header = modal.querySelector(".contact-choice-header");
+
+    Object.assign(header.style, {
+      display: "flex",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      gap: "16px",
+      padding: "22px 22px 18px",
+      borderBottom: "1px solid #edf0ee"
+    });
+
+    const eyebrow = modal.querySelector(".contact-choice-eyebrow");
+
+    Object.assign(eyebrow.style, {
+      marginBottom: "7px",
+      color: "#1b6b48",
+      fontSize: "11px",
+      fontWeight: "800",
+      letterSpacing: "1.6px"
+    });
+
+    const title = modal.querySelector("#contact-choice-title");
+
+    Object.assign(title.style, {
+      margin: "0",
+      fontSize: "24px",
+      lineHeight: "1.2",
+      fontWeight: "800"
+    });
+
+    Object.assign(closeButton.style, {
+      flex: "0 0 40px",
+      width: "40px",
+      height: "40px",
+      border: "0",
+      borderRadius: "50%",
+      background: "#f0f3f1",
+      color: "#202925",
+      fontSize: "28px",
+      lineHeight: "1",
+      cursor: "pointer"
+    });
+
+    const body = modal.querySelector(".contact-choice-body");
+
+    Object.assign(body.style, {
+      padding: "20px 22px 22px"
+    });
+
+    const description = modal.querySelector(
+      ".contact-choice-description"
+    );
+
+    Object.assign(description.style, {
+      margin: "0 0 16px",
+      color: "#68746d",
+      fontSize: "14px",
+      lineHeight: "1.5"
+    });
+
+    const productBox = modal.querySelector(".contact-choice-product");
+
+    Object.assign(productBox.style, {
+      display: "flex",
+      flexDirection: "column",
+      gap: "6px",
+      padding: "14px",
+      marginBottom: "18px",
+      background: "#f3f6f4",
+      borderRadius: "10px",
+      overflowWrap: "anywhere"
+    });
+
+    Object.assign(
+      modal.querySelector(".contact-choice-product-name").style,
+      {
+        fontSize: "15px",
+        fontWeight: "800",
+        lineHeight: "1.4"
+      }
+    );
+
+    Object.assign(
+      modal.querySelector(".contact-choice-product-details").style,
+      {
+        color: "#68746d",
+        fontSize: "12px",
+        lineHeight: "1.6"
+      }
+    );
+
+    const options = modal.querySelector(".contact-choice-options");
+
+    Object.assign(options.style, {
+      display: "grid",
+      gap: "10px"
+    });
+
+    modal.querySelectorAll(".contact-choice-option").forEach(option => {
+      Object.assign(option.style, {
+        display: "flex",
+        alignItems: "center",
+        gap: "13px",
+        minHeight: "72px",
+        padding: "13px 14px",
+        border: "1px solid #e1e7e3",
+        borderRadius: "12px",
+        color: "#202925",
+        background: "#ffffff",
+        textDecoration: "none",
+        boxSizing: "border-box",
+        transition: "background .15s ease, border-color .15s ease"
+      });
+
+      option.addEventListener("mouseenter", () => {
+        option.style.background = "#f7faf8";
+        option.style.borderColor = "#aabeb1";
+      });
+
+      option.addEventListener("mouseleave", () => {
+        option.style.background = "#ffffff";
+        option.style.borderColor = "#e1e7e3";
+      });
+    });
+
+    Object.assign(
+      modal.querySelector(".contact-choice-whatsapp").style,
+      {
+        borderColor: "#b7dfc3",
+        background: "#f0faf3"
+      }
+    );
+
+    const icons = modal.querySelectorAll(".contact-choice-icon");
+
+    icons.forEach(icon => {
+      Object.assign(icon.style, {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flex: "0 0 42px",
+        width: "42px",
+        height: "42px",
+        borderRadius: "11px",
+        background: "#edf2ee",
+        color: "#1b6b48",
+        fontSize: "22px",
+        fontWeight: "700"
+      });
+    });
+
+    const whatsappIcon = modal.querySelector(
+      ".contact-choice-whatsapp .contact-choice-icon"
+    );
+
+    whatsappIcon.style.background = "#d8f3df";
+    whatsappIcon.style.color = "#16803d";
+
+    modal.querySelectorAll(".contact-choice-option-text").forEach(text => {
+      Object.assign(text.style, {
+        display: "flex",
+        flex: "1",
+        minWidth: "0",
+        flexDirection: "column",
+        gap: "5px"
+      });
+
+      Object.assign(text.querySelector("strong").style, {
+        fontSize: "15px",
+        lineHeight: "1.3"
+      });
+
+      Object.assign(text.querySelector("small").style, {
+        color: "#68746d",
+        fontSize: "12px",
+        lineHeight: "1.4"
+      });
+    });
+
+    modal.querySelectorAll(".contact-choice-arrow").forEach(arrow => {
+      Object.assign(arrow.style, {
+        color: "#68746d",
+        fontSize: "19px",
+        flex: "0 0 auto"
+      });
+    });
+
+    const footnote = modal.querySelector(".contact-choice-footnote");
+
+    Object.assign(footnote.style, {
+      margin: "16px 0 0",
+      color: "#78837d",
+      fontSize: "11px",
+      lineHeight: "1.5",
+      textAlign: "center"
+    });
+
+    return modal;
+  }
+
+  function openContactChoices(p) {
+    const modal = ensureContactModal();
+
+    contactLastFocusedElement = document.activeElement;
+    contactCurrentProduct = p;
+
     const v = p.vehicle || {};
 
-    const msg =
-      `Dzień dobry, proszę o informację o dostępności części: ${p.name || ""}` +
-      `${p.make ? " | " + p.make : ""}` +
-      `${p.model ? " " + p.model : ""}` +
-      `${p.oem ? " | OEM: " + p.oem : ""}` +
-      `${v.dismantling_number ? " | Numer rozbiórkowy: " + v.dismantling_number : ""}` +
-      `${p.price != null ? " | Cena: " + money(p.price) : ""}.`;
+    modal.querySelector(".contact-choice-product-name").textContent =
+      p.name || "Część samochodowa";
 
-    return `https://wa.me/${number}?text=${encodeURIComponent(msg)}`;
+    const details = [
+      [p.make, p.model, p.years].filter(Boolean).join(" · "),
+      p.oem ? `OEM: ${p.oem}` : "",
+      v.dismantling_number
+        ? `Numer rozbiórkowy: ${v.dismantling_number}`
+        : "",
+      p.price !== null && p.price !== undefined
+        ? `Cena: ${money(p.price)}`
+        : ""
+    ].filter(Boolean);
+
+    modal.querySelector(
+      ".contact-choice-product-details"
+    ).textContent = details.join(" | ") || "Zapytaj o szczegóły";
+
+    const whatsapp = modal.querySelector("[data-contact-whatsapp]");
+    whatsapp.href = contactUrl(p);
+
+    const phone = modal.querySelector("[data-contact-phone]");
+    phone.href = `tel:${CONTACT_PHONE}`;
+
+    const email = modal.querySelector("[data-contact-email]");
+    email.href = emailUrl(p);
+
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    modal.style.setProperty("display", "flex", "important");
+
+    document.body.style.overflow = "hidden";
+
+    modal.querySelector(".contact-choice-close").focus();
   }
+
+  function closeContactChoices() {
+    const modal = $("contact-choice-modal");
+
+    if (!modal || modal.hidden) return;
+
+    modal.style.setProperty("display", "none", "important");
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+
+    document.body.style.overflow =
+      $("product-modal") && !$("product-modal").hidden
+        ? "hidden"
+        : "";
+
+    if (
+      contactLastFocusedElement &&
+      typeof contactLastFocusedElement.focus === "function"
+    ) {
+      contactLastFocusedElement.focus();
+    }
+
+    contactCurrentProduct = null;
+  }
+
+  /* =========================================
+     ФИЛЬТРЫ КАТАЛОГА
+     ========================================= */
 
   function setFilters() {
     const categories = [
@@ -234,6 +673,10 @@
         </div>
       </section>`;
   }
+
+  /* =========================================
+     ОКНО ПОДРОБНОСТЕЙ ТОВАРА
+     ========================================= */
 
   function ensureModal() {
     let modal = $("product-modal");
@@ -387,6 +830,7 @@
     main.alt = `Zdjęcie ${activeGalleryIndex + 1}`;
 
     const counter = $("gallery-counter");
+
     if (counter) {
       counter.textContent =
         `${activeGalleryIndex + 1} / ${activeGalleryUrls.length}`;
@@ -421,6 +865,7 @@
     lastFocusedElement = document.activeElement;
 
     activeGalleryUrls = galleryFor(p);
+
     if (!activeGalleryUrls.length) {
       activeGalleryUrls = [placeholder];
     }
@@ -502,10 +947,11 @@
             : ""}
 
           <div class="product-modal-actions">
-            <a class="button button-green"
-               href="${esc(contactUrl(p))}"
-               target="_blank"
-               rel="noopener">Zapytaj przez WhatsApp ↗</a>
+            <button
+              type="button"
+              class="button button-green"
+              id="product-modal-ask-button"
+            >Zapytaj o część ↗</button>
           </div>
         </div>
       </div>
@@ -529,6 +975,10 @@
       });
     });
 
+    $("product-modal-ask-button").addEventListener("click", () => {
+      openContactChoices(p);
+    });
+
     renderGallery(0);
 
     modal.hidden = false;
@@ -543,6 +993,7 @@
 
   function closeProduct() {
     const modal = $("product-modal");
+
     if (!modal || modal.hidden) return;
 
     modal.style.setProperty("display", "none", "important");
@@ -559,6 +1010,10 @@
       lastFocusedElement.focus();
     }
   }
+
+  /* =========================================
+     РЕНДЕР КАРТОЧЕК
+     ========================================= */
 
   function render() {
     const term = $("search").value.trim().toLocaleLowerCase("pl");
@@ -600,6 +1055,7 @@
       img.alt = p.name || "Część samochodowa";
 
       const badge = el.querySelector(".stock-badge");
+
       badge.textContent =
         p.status === "reserved"
           ? "Zapytaj o dostępność"
@@ -628,9 +1084,62 @@
           openProduct(p);
         });
 
-      const contact = el.querySelector(".product-contact");
-      contact.href = contactUrl(p);
-      contact.addEventListener("click", e => e.stopPropagation());
+      /*
+       * Старую ссылку .product-contact заменяем кнопкой.
+       * Поэтому править шаблон карточки в index.html не нужно.
+       */
+      let contact = el.querySelector(".product-contact");
+
+      if (contact) {
+        const askButton = document.createElement("button");
+
+        askButton.type = "button";
+        askButton.className = "product-contact-button";
+        askButton.textContent = "Zapytaj o część ↗";
+        askButton.setAttribute(
+          "aria-label",
+          `Zapytaj o część: ${p.name || "część samochodowa"}`
+        );
+
+        Object.assign(askButton.style, {
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "7px",
+          minHeight: "42px",
+          padding: "10px 14px",
+          border: "1px solid #1b6b48",
+          borderRadius: "7px",
+          background: "#1b6b48",
+          color: "#ffffff",
+          fontFamily: "inherit",
+          fontSize: "13px",
+          fontWeight: "700",
+          lineHeight: "1.3",
+          textAlign: "center",
+          textDecoration: "none",
+          cursor: "pointer",
+          boxSizing: "border-box"
+        });
+
+        askButton.addEventListener("mouseenter", () => {
+          askButton.style.background = "#15563a";
+          askButton.style.borderColor = "#15563a";
+        });
+
+        askButton.addEventListener("mouseleave", () => {
+          askButton.style.background = "#1b6b48";
+          askButton.style.borderColor = "#1b6b48";
+        });
+
+        askButton.addEventListener("click", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          openContactChoices(p);
+        });
+
+        contact.replaceWith(askButton);
+      }
 
       card.addEventListener("click", e => {
         if (!e.target.closest("a, button")) {
@@ -639,6 +1148,7 @@
       });
 
       card.setAttribute("aria-label", p.name || "Część samochodowa");
+
       grid.appendChild(el);
     });
 
@@ -653,6 +1163,10 @@
 
     $("empty-state").hidden = filtered.length !== 0;
   }
+
+  /* =========================================
+     ЗАГРУЗКА КАТАЛОГА
+     ========================================= */
 
   async function load() {
     if (!client) {
@@ -698,6 +1212,10 @@
     }
   }
 
+  /* =========================================
+     СОБЫТИЯ И КОНТАКТЫ САЙТА
+     ========================================= */
+
   ["search", "category-filter", "make-filter"].forEach(id => {
     $(id).addEventListener(
       id === "search" ? "input" : "change",
@@ -706,6 +1224,7 @@
   });
 
   ensureModal();
+  ensureContactModal();
 
   $("product-modal-close").addEventListener("click", closeProduct);
 
@@ -716,19 +1235,35 @@
   });
 
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape") closeProduct();
+    if (e.key === "Escape") {
+      const contactModal = $("contact-choice-modal");
 
-    if (!$("product-modal").hidden && e.key === "ArrowRight") {
+      if (contactModal && !contactModal.hidden) {
+        closeContactChoices();
+        return;
+      }
+
+      closeProduct();
+    }
+
+    if (
+      !$("product-modal").hidden &&
+      e.key === "ArrowRight"
+    ) {
       renderGallery(activeGalleryIndex + 1);
     }
 
-    if (!$("product-modal").hidden && e.key === "ArrowLeft") {
+    if (
+      !$("product-modal").hidden &&
+      e.key === "ArrowLeft"
+    ) {
       renderGallery(activeGalleryIndex - 1);
     }
   });
 
   // WhatsApp — główny numer kontaktowy
   const w = $("whatsapp-cta");
+
   if (w) {
     w.href = `https://wa.me/${CONTACT_WHATSAPP}`;
     w.target = "_blank";
@@ -737,18 +1272,21 @@
 
   // Telefon
   const ph = $("phone-cta");
+
   if (ph) {
     ph.href = `tel:${CONTACT_PHONE}`;
   }
 
   // E-mail
   const em = $("email-cta");
+
   if (em) {
     em.href = `mailto:${CONTACT_EMAIL}`;
   }
 
   // Kontakty w nagłówku
   const headerWhatsApp = document.querySelector(".header-whatsapp");
+
   if (headerWhatsApp) {
     headerWhatsApp.href = `https://wa.me/${CONTACT_WHATSAPP}`;
     headerWhatsApp.target = "_blank";
@@ -756,6 +1294,7 @@
   }
 
   const headerPhone = document.querySelector(".header-phone");
+
   if (headerPhone) {
     headerPhone.href = `tel:${CONTACT_PHONE}`;
   }
