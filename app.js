@@ -1,10 +1,23 @@
 (() => {
   const cfg = window.APP_CONFIG || {};
+
   const configured =
     cfg.SUPABASE_URL &&
     !cfg.SUPABASE_URL.includes("YOUR-PROJECT") &&
     cfg.SUPABASE_ANON_KEY &&
     !cfg.SUPABASE_ANON_KEY.includes("YOUR_");
+
+  const $ = id => document.getElementById(id);
+  const grid = $("product-grid");
+  if (!grid) return;
+
+  const client =
+    configured && window.supabase
+      ? window.supabase.createClient(
+          cfg.SUPABASE_URL,
+          cfg.SUPABASE_ANON_KEY
+        )
+      : null;
 
   const demo = [
     {
@@ -65,24 +78,13 @@
     }
   ];
 
-  const grid = document.getElementById("product-grid");
-  if (!grid) return;
-
-  const $ = id => document.getElementById(id);
-
-  const client =
-    configured && window.supabase
-      ? window.supabase.createClient(
-          cfg.SUPABASE_URL,
-          cfg.SUPABASE_ANON_KEY
-        )
-      : null;
-
   let products = [];
+  let lastFocusedElement = null;
 
-  const placeholder = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="440" viewBox="0 0 640 440"><rect width="640" height="440" fill="#edf0ef"/><g fill="none" stroke="#b6c0c0" stroke-width="5"><path d="M170 280h300l-35-80H235z"/><circle cx="235" cy="300" r="32"/><circle cx="405" cy="300" r="32"/><path d="M260 205l28-38h90l40 38"/></g><text x="320" y="375" font-family="Arial" font-size="18" fill="#7d898a" text-anchor="middle">ARVORN AUTO PARTS</text></svg>'
-  )}`;
+  const placeholder =
+    `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="440" viewBox="0 0 640 440"><rect width="640" height="440" fill="#edf0ef"/><g fill="none" stroke="#b6c0c0" stroke-width="5"><path d="M170 280h300l-35-80H235z"/><circle cx="235" cy="300" r="32"/><circle cx="405" cy="300" r="32"/><path d="M260 205l28-38h90l40 38"/></g><text x="320" y="375" font-family="Arial" font-size="18" fill="#7d898a" text-anchor="middle">ARVORN AUTO PARTS</text></svg>'
+    )}`;
 
   const money = n =>
     new Intl.NumberFormat("pl-PL", {
@@ -110,14 +112,14 @@
 
   function contactUrl(p) {
     const number = (cfg.WHATSAPP_NUMBER || "").replace(/\D/g, "");
-    const vehicle = p.vehicle;
+    const v = p.vehicle;
 
     const msg =
       `Dzień dobry, proszę o informację o dostępności części: ${p.name}` +
       `${p.make ? " | " + p.make : ""}` +
       `${p.model ? " " + p.model : ""}` +
       `${p.oem ? " | OEM: " + p.oem : ""}` +
-      `${vehicle?.dismantling_number ? " | Numer rozbiórkowy: " + vehicle.dismantling_number : ""}` +
+      `${v?.dismantling_number ? " | Numer rozbiórkowy: " + v.dismantling_number : ""}` +
       `${p.price != null ? " | Cena: " + money(p.price) : ""}.`;
 
     return number
@@ -136,23 +138,35 @@
 
     const cat = $("category-filter");
     const make = $("make-filter");
+
     const oldCat = cat.value;
     const oldMake = make.value;
 
     cat.innerHTML =
       '<option value="">Wszystkie kategorie</option>' +
-      categories.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+      categories.map(v =>
+        `<option value="${esc(v)}">${esc(v)}</option>`
+      ).join("");
 
     make.innerHTML =
       '<option value="">Wszystkie marki</option>' +
-      makes.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+      makes.map(v =>
+        `<option value="${esc(v)}">${esc(v)}</option>`
+      ).join("");
 
     cat.value = oldCat;
     make.value = oldMake;
   }
 
-  function vehicleMarkup(v) {
-    if (!v) return "";
+  function vehicleDetailsMarkup(v) {
+    if (!v) {
+      return `
+        <section class="product-vehicle">
+          <h3>Dane samochodu</h3>
+          <p>Brak przypisanych danych samochodu.</p>
+        </section>
+      `;
+    }
 
     const fields = [
       ["Marka", v.make],
@@ -173,21 +187,91 @@
         value !== undefined &&
         String(value).trim() !== ""
       )
-      .map(([label, value]) =>
-        `<div class="vehicle-detail-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`
-      )
-      .join("");
+      .map(([label, value]) => `
+        <div class="vehicle-detail-row">
+          <span>${esc(label)}</span>
+          <strong>${esc(value)}</strong>
+        </div>
+      `).join("");
 
     return `
       <section class="product-vehicle">
-        <h4>Dane samochodu</h4>
+        <h3>Dane samochodu</h3>
         <div class="vehicle-number">
           Numer rozbiórkowy:
-          <strong>${esc(v.dismantling_number)}</strong>
+          <strong>${esc(v.dismantling_number || "—")}</strong>
         </div>
-        <div class="vehicle-detail-list">${rows}</div>
+        <div class="vehicle-detail-list">
+          ${rows || "<p>Brak dodatkowych danych.</p>"}
+        </div>
       </section>
     `;
+  }
+
+  function openProduct(p) {
+    const modal = $("product-modal");
+    const content = $("product-modal-content");
+    if (!modal || !content) return;
+
+    lastFocusedElement = document.activeElement;
+
+    const vehicle = p.vehicle || null;
+    const image = p.image_url || placeholder;
+
+    content.innerHTML = `
+      <div class="product-modal-main">
+        <div>
+          <img
+            class="product-modal-image"
+            src="${esc(image)}"
+            alt="${esc(p.name || "Część samochodowa")}"
+          >
+        </div>
+
+        <div>
+          <p class="product-modal-category">${esc(p.category || "Części samochodowe")}</p>
+          <h2 class="product-modal-title" id="modal-product-name">${esc(p.name || "Część samochodowa")}</h2>
+
+          <div class="product-modal-fitment">
+            ${esc([p.make, p.model, p.years].filter(Boolean).join(" · ") || "Zapytaj o dopasowanie")}
+          </div>
+
+          ${p.oem ? `<div class="product-modal-oem"><b>OEM:</b> ${esc(p.oem)}</div>` : ""}
+
+          <div><b>Status:</b> ${esc(statusText(p.status))}</div>
+          <div class="product-modal-price">${money(p.price)}</div>
+
+          ${p.description
+            ? `<div class="product-modal-description">${esc(p.description)}</div>`
+            : ""}
+
+          <div class="product-modal-actions">
+            <a class="button button-green" href="${esc(contactUrl(p))}" target="_blank" rel="noopener">Zapytaj przez WhatsApp ↗</a>
+          </div>
+        </div>
+      </div>
+
+      ${vehicleDetailsMarkup(vehicle)}
+    `;
+
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+
+    $("product-modal-close").focus();
+  }
+
+  function closeProduct() {
+    const modal = $("product-modal");
+    if (!modal || modal.hidden) return;
+
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+
+    if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
+      lastFocusedElement.focus();
+    }
   }
 
   function render() {
@@ -232,7 +316,7 @@
       el.querySelector(".product-category").textContent =
         p.category || "Części samochodowe";
 
-      el.querySelector(".product-name").textContent = p.name;
+      el.querySelector(".product-name").textContent = p.name || "";
 
       el.querySelector(".product-fitment").textContent =
         [p.make, p.model, p.years].filter(Boolean).join(" · ") ||
@@ -243,28 +327,27 @@
 
       el.querySelector(".product-price").textContent = money(p.price);
 
-      // Dodaj dane samochodu do karty produktu.
-      const details = vehicleMarkup(p.vehicle);
-      if (details) {
-        const contact = el.querySelector(".product-contact");
-        const wrapper = document.createElement("div");
-        wrapper.innerHTML = details;
+      const detailsButton = el.querySelector(".product-details-button");
+      detailsButton.addEventListener("click", e => {
+        e.stopPropagation();
+        openProduct(p);
+      });
 
-        if (contact) {
-          contact.parentNode.insertBefore(wrapper, contact);
-        } else {
-          card.appendChild(wrapper);
-        }
-      }
+      const contact = el.querySelector(".product-contact");
+      contact.href = contactUrl(p);
+      contact.addEventListener("click", e => e.stopPropagation());
 
-      const a = el.querySelector(".product-contact");
-      a.href = contactUrl(p);
+      card.addEventListener("click", e => {
+        if (e.target.closest("a, button")) return;
+        openProduct(p);
+      });
+
+      card.setAttribute("aria-label", p.name || "Część samochodowa");
 
       if (p.status === "reserved") {
         badge.textContent = "Zapytaj o dostępność";
       }
 
-      card.setAttribute("aria-label", p.name);
       grid.appendChild(el);
     });
 
@@ -285,14 +368,15 @@
       products = demo;
       setFilters();
       render();
+
       $("catalog-status").hidden = false;
       $("catalog-status").textContent =
         "Tryb demonstracyjny: widzisz przykładowe produkty. Aby uruchomić prawdziwy katalog, skonfiguruj Supabase zgodnie z instrukcją README.";
+
       return;
     }
 
     try {
-      // Загружаем запчасти вместе с данными привязанного автомобиля.
       const { data, error } = await client
         .from("products")
         .select("*, vehicle:vehicles(*)")
@@ -315,16 +399,28 @@
     } catch (e) {
       products = [];
       render();
+
       $("catalog-status").hidden = false;
       $("catalog-status").textContent =
         "Nie udało się pobrać katalogu lub danych samochodów. Sprawdź konfigurację Supabase.";
+
       console.error("ARVORN catalog error:", e);
     }
   }
 
-  ["search", "category-filter", "make-filter"].forEach(id =>
-    $(id).addEventListener(id === "search" ? "input" : "change", render)
-  );
+  ["search", "category-filter", "make-filter"].forEach(id => {
+    $(id).addEventListener(id === "search" ? "input" : "change", render);
+  });
+
+  $("product-modal-close").addEventListener("click", closeProduct);
+
+  $("product-modal").addEventListener("click", e => {
+    if (e.target === $("product-modal")) closeProduct();
+  });
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeProduct();
+  });
 
   const w = $("whatsapp-cta");
   w.href =
