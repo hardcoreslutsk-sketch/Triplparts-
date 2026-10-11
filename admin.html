@@ -57,34 +57,27 @@
 
 <section class="admin-panel">
 <h2>Dodaj samochód z demontażu</h2>
-<p>Najpierw dodaj samochód i przypisz mu unikalny numer rozbiórkowy, np. N3185.</p>
+<p>Dodaj samochód do bazy. Jego numer będzie później używany przy dodawaniu części.</p>
 
 <form id="vehicle-form" class="form-grid">
-
 <label>Numer rozbiórkowy *
 <input id="v-number" required maxlength="50" placeholder="np. N3185">
 </label>
-
 <label>Marka *
 <input id="v-make" required maxlength="100" placeholder="np. Mercedes-Benz">
 </label>
-
 <label>Model *
 <input id="v-model" required maxlength="100" placeholder="np. M W164">
 </label>
-
 <label>Rok produkcji
 <input id="v-year" type="number" min="1900" max="2100" placeholder="np. 2006">
 </label>
-
 <label>VIN
 <input id="v-vin" maxlength="50" placeholder="Numer VIN">
 </label>
-
 <label>Silnik
 <input id="v-engine" maxlength="150" placeholder="np. 3.0 CDI OM642.940">
 </label>
-
 <label>Paliwo
 <select id="v-fuel">
 <option value="">Wybierz</option>
@@ -95,7 +88,6 @@
 <option value="Elektryczny">Elektryczny</option>
 </select>
 </label>
-
 <label>Skrzynia biegów
 <select id="v-transmission">
 <option value="">Wybierz</option>
@@ -103,7 +95,6 @@
 <option value="Automatyczna">Automatyczna</option>
 </select>
 </label>
-
 <label>Napęd
 <select id="v-drivetrain">
 <option value="">Wybierz</option>
@@ -112,7 +103,6 @@
 <option value="AWD">AWD — 4x4</option>
 </select>
 </label>
-
 <label>Strona kierownicy
 <select id="v-steering-side">
 <option value="">Wybierz</option>
@@ -120,11 +110,9 @@
 <option value="RHD">RHD — prawa</option>
 </select>
 </label>
-
 <label class="full">Uwagi
 <textarea id="v-notes" rows="3" maxlength="2000" placeholder="Dodatkowe informacje o samochodzie"></textarea>
 </label>
-
 <button class="button button-dark full" id="save-vehicle" type="submit">Dodaj samochód</button>
 </form>
 
@@ -133,14 +121,7 @@
 <h3>Dodane samochody</h3>
 <div class="table-scroll">
 <table>
-<thead>
-<tr>
-<th>Numer</th>
-<th>Marka i model</th>
-<th>Rok</th>
-<th>Silnik</th>
-</tr>
-</thead>
+<thead><tr><th>Numer</th><th>Marka i model</th><th>Rok</th><th>Silnik</th></tr></thead>
 <tbody id="vehicles-body"></tbody>
 </table>
 </div>
@@ -153,12 +134,12 @@
 <form id="product-form" class="form-grid">
 <input type="hidden" id="product-id">
 
-<label class="full">Samochód / numer rozbiórkowy
-<select id="p-vehicle">
-<option value="">Bez przypisanego samochodu</option>
-</select>
-<small>Wybierz samochód, z którego pochodzi część.</small>
+<label class="full">Numer rozbiórkowy samochodu *
+<input id="p-vehicle-number" required maxlength="50" autocomplete="off" placeholder="Wpisz numer, np. N3185">
+<small>Wpisz numer ręcznie. Dane samochodu zostaną wyszukane automatycznie.</small>
 </label>
+
+<div id="p-vehicle-info" class="full notice" hidden aria-live="polite"></div>
 
 <label>Nazwa części *
 <input id="p-name" required maxlength="140" placeholder="np. Lampa przednia lewa">
@@ -169,15 +150,15 @@
 </label>
 
 <label>Marka auta
-<input id="p-make" maxlength="80" placeholder="np. BMW">
+<input id="p-make" maxlength="80" placeholder="np. Mercedes-Benz">
 </label>
 
 <label>Model auta
-<input id="p-model" maxlength="100" placeholder="np. Seria 3 E90">
+<input id="p-model" maxlength="100" placeholder="np. M W164">
 </label>
 
 <label>Rok / zakres lat
-<input id="p-years" maxlength="60" placeholder="np. 2005–2011">
+<input id="p-years" maxlength="60" placeholder="np. 2006">
 </label>
 
 <label>Numer OEM / indeks
@@ -221,18 +202,9 @@
 <h2>Lista części <span id="admin-total" class="total-pill">0</span></h2>
 <input id="admin-search" type="search" placeholder="Szukaj w swoich częściach…">
 </div>
-
 <div class="table-scroll">
 <table>
-<thead>
-<tr>
-<th>Część</th>
-<th>OEM</th>
-<th>Cena</th>
-<th>Status</th>
-<th>Akcje</th>
-</tr>
-</thead>
+<thead><tr><th>Część</th><th>OEM</th><th>Cena</th><th>Status</th><th>Akcje</th></tr></thead>
 <tbody id="inventory-body"></tbody>
 </table>
 </div>
@@ -242,9 +214,6 @@
 </section>
 </main>
 
-<footer>
-<p>ARVORN AUTO PARTS · Panel administracyjny</p>
-</footer>
-
+<footer><p>ARVORN AUTO PARTS · Panel administracyjny</p></footer>
 </body>
 </html>
