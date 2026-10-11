@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Używane części samochodowe. Wyszukaj część i skontaktuj się z nami przez WhatsApp lub telefon.">
+  <title>ARVORN Auto Parts — używane części samochodowe</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="./"><span class="brand-mark">A</span><span><b>ARVORN</b><small>AUTO PARTS</small></span></a><a class="admin-link" href="admin.html">Panel administratora ↗</a></header>
+<main>
+  <section class="hero"><div class="hero-copy"><span class="eyebrow">UŻYWANE CZĘŚCI • POLSKA</span><h1>Dobra część.<br><em>Rozsądna cena.</em></h1><p>Sprawdź dostępność używanych części samochodowych. Masz numer OEM? Wpisz go i znajdź właściwą część.</p><a class="button button-light" href="#catalog">Przeglądaj katalog <span>↓</span></a></div><div class="hero-art" aria-hidden="true"><div class="ring ring-one"></div><div class="ring ring-two"></div><div class="hero-label">USED<br>PARTS<br><strong>PL</strong></div><div class="hero-cross">✳</div></div></section>
+  <section class="catalog-section" id="catalog"><div class="section-heading"><div><span class="eyebrow dark-eyebrow">NASZ ASORTYMENT</span><h2>Znajdź swoją część</h2></div><span class="results-count" id="results-count">Ładowanie katalogu…</span></div>
+    <div class="search-row"><label class="searchbox"><span>⌕</span><input id="search" type="search" placeholder="Szukaj części, OEM, marki lub modelu…" autocomplete="off"></label><select id="category-filter" aria-label="Kategoria"><option value="">Wszystkie kategorie</option></select><select id="make-filter" aria-label="Marka"><option value="">Wszystkie marki</option></select></div>
+    <div id="catalog-status" class="notice" hidden></div><div id="product-grid" class="product-grid"></div><div id="empty-state" class="empty-state" hidden><div class="empty-icon">⌕</div><h3>Nie znaleziono części</h3><p>Spróbuj zmienić wyszukiwaną frazę lub skontaktuj się z nami.</p></div>
+  </section>
+  <section class="contact-band"><div><span class="eyebrow">NIE WIDZISZ TEGO, CZEGO SZUKASZ?</span><h2>Zapytaj o część.</h2><p>Mamy szeroki wybór części używanych. Wyślij numer OEM, model auta lub zdjęcie części.</p></div><div class="contact-actions"><a class="button button-green" id="whatsapp-cta" href="#">WhatsApp ↗</a><a class="button button-outline" id="phone-cta" href="#">Zadzwoń</a></div></section>
+</main>
+<footer><a class="brand brand-footer" href="./"><span class="brand-mark">A</span><span><b>ARVORN</b><small>AUTO PARTS</small></span></a><p>Używane części samochodowe · Polska</p><small>Przed zakupem potwierdź dostępność i zgodność części z pojazdem.</small></footer>
+<template id="product-template"><article class="product-card"><div class="product-image-wrap"><img class="product-image" alt="" loading="lazy"><span class="stock-badge"></span></div><div class="product-info"><div class="product-category"></div><h3 class="product-name"></h3><div class="product-fitment"></div><div class="product-oem"></div><div class="product-bottom"><strong class="product-price"></strong><a class="product-contact" target="_blank" rel="noopener">Zapytaj ↗</a></div></div></article></template>
+</body></html>
