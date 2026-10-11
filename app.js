@@ -19,40 +19,60 @@
 
   const demo = [
     {
-      id: "demo1", name: "Lampa przednia lewa",
-      category: "Oświetlenie", make: "BMW",
-      model: "Seria 3 E90", years: "2005–2011",
-      oem: "63117161649", price: 180,
+      id: "demo1",
+      name: "Lampa przednia lewa",
+      category: "Oświetlenie",
+      make: "BMW",
+      model: "Seria 3 E90",
+      years: "2005–2011",
+      oem: "63117161649",
+      price: 180,
       status: "available",
       description: "Przykładowy produkt demonstracyjny.",
-      image_url: "", vehicle: null
+      image_url: "",
+      vehicle: null
     },
     {
-      id: "demo2", name: "Zderzak przedni",
-      category: "Karoseria", make: "Volkswagen",
-      model: "Golf VI", years: "2008–2012",
-      oem: "5K0807217", price: 350,
+      id: "demo2",
+      name: "Zderzak przedni",
+      category: "Karoseria",
+      make: "Volkswagen",
+      model: "Golf VI",
+      years: "2008–2012",
+      oem: "5K0807217",
+      price: 350,
       status: "available",
       description: "Przykładowy produkt demonstracyjny.",
-      image_url: "", vehicle: null
+      image_url: "",
+      vehicle: null
     },
     {
-      id: "demo3", name: "Sterownik silnika ECU",
-      category: "Elektronika", make: "Audi",
-      model: "A4 B8", years: "2008–2015",
-      oem: "03L906018AQ", price: 260,
+      id: "demo3",
+      name: "Sterownik silnika ECU",
+      category: "Elektronika",
+      make: "Audi",
+      model: "A4 B8",
+      years: "2008–2015",
+      oem: "03L906018AQ",
+      price: 260,
       status: "reserved",
       description: "Przykładowy produkt demonstracyjny.",
-      image_url: "", vehicle: null
+      image_url: "",
+      vehicle: null
     },
     {
-      id: "demo4", name: "Skrzynia biegów",
-      category: "Skrzynie biegów", make: "Opel",
-      model: "Astra J", years: "2009–2015",
-      oem: "M32", price: 950,
+      id: "demo4",
+      name: "Skrzynia biegów",
+      category: "Skrzynie biegów",
+      make: "Opel",
+      model: "Astra J",
+      years: "2009–2015",
+      oem: "M32",
+      price: 950,
       status: "available",
       description: "Przykładowy produkt demonstracyjny.",
-      image_url: "", vehicle: null
+      image_url: "",
+      vehicle: null
     }
   ];
 
@@ -207,7 +227,7 @@
       display: "none",
       alignItems: "center",
       justifyContent: "center",
-      padding: "18px",
+      padding: "12px",
       background: "rgba(15,22,19,.76)",
       overflowY: "auto",
       boxSizing: "border-box"
@@ -219,8 +239,10 @@
       position: "relative",
       width: "100%",
       maxWidth: "760px",
-      maxHeight: "calc(100vh - 36px)",
+      maxHeight: "calc(100vh - 24px)",
+      maxHeight: "calc(100dvh - 24px)",
       overflowY: "auto",
+      overscrollBehavior: "contain",
       background: "#fff",
       color: "#202925",
       borderRadius: "12px",
@@ -228,22 +250,24 @@
       boxSizing: "border-box"
     });
 
-    // Исправленный крестик: абсолютное позиционирование
-    // внутри окна, без отрицательных отступов и float.
+    // Крестик закреплён в верхнем углу самого окна.
+    // Отрицательных отступов больше нет.
     const close = $("product-modal-close");
 
     Object.assign(close.style, {
       position: "absolute",
       top: "10px",
       right: "10px",
+      left: "auto",
+      bottom: "auto",
       float: "none",
-      zIndex: "10",
+      zIndex: "20",
       margin: "0",
       padding: "0",
-      width: "40px",
-      height: "40px",
-      minWidth: "40px",
-      minHeight: "40px",
+      width: "42px",
+      height: "42px",
+      minWidth: "42px",
+      minHeight: "42px",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -264,9 +288,25 @@
 
     Object.assign(content.style, {
       padding: "24px",
-      paddingTop: "58px",
+      paddingTop: "64px",
       boxSizing: "border-box"
     });
+
+    // На телефонах уменьшаем отступы и учитываем видимую высоту.
+    if (window.matchMedia("(max-width: 560px)").matches) {
+      modal.style.padding = "8px";
+
+      Object.assign(dialog.style, {
+        maxHeight: "calc(100vh - 16px)",
+        maxHeight: "calc(100dvh - 16px)",
+        borderRadius: "10px"
+      });
+
+      Object.assign(content.style, {
+        padding: "16px",
+        paddingTop: "64px"
+      });
+    }
 
     return modal;
   }
@@ -274,6 +314,7 @@
   function openProduct(p) {
     const modal = ensureModal();
     const content = $("product-modal-content");
+
     lastFocusedElement = document.activeElement;
 
     content.innerHTML = `
@@ -294,7 +335,7 @@
           </p>
 
           <h2 id="modal-product-name"
-            style="font-size:28px;line-height:1.2;margin-right:35px">
+            style="font-size:28px;line-height:1.2;margin:0 48px 12px 0">
             ${esc(p.name || "Część samochodowa")}
           </h2>
 
@@ -306,10 +347,12 @@
 
           <p><strong>Status:</strong> ${esc(statusText(p.status))}</p>
 
-          <p style="font-size:26px;font-weight:700">${money(p.price)}</p>
+          <p style="font-size:26px;font-weight:700">
+            ${money(p.price)}
+          </p>
 
           ${p.description
-            ? `<p style="white-space:pre-wrap;line-height:1.6">${esc(p.description)}</p>`
+            ? `<p style="white-space:pre-wrap;line-height:1.6;overflow-wrap:anywhere">${esc(p.description)}</p>`
             : ""}
 
           <a class="button button-green"
@@ -328,6 +371,7 @@
     modal.hidden = false;
     modal.setAttribute("aria-hidden", "false");
     modal.style.setProperty("display", "flex", "important");
+
     document.body.style.overflow = "hidden";
 
     $("product-modal-close").focus();
@@ -340,6 +384,7 @@
     modal.style.setProperty("display", "none", "important");
     modal.hidden = true;
     modal.setAttribute("aria-hidden", "true");
+
     document.body.style.overflow = "";
 
     if (lastFocusedElement && lastFocusedElement.focus) {
@@ -357,8 +402,13 @@
       (!category || p.category === category) &&
       (!make || p.make === make) &&
       (!term || [
-        p.name, p.category, p.make, p.model, p.years,
-        p.oem, p.description,
+        p.name,
+        p.category,
+        p.make,
+        p.model,
+        p.years,
+        p.oem,
+        p.description,
         p.vehicle?.dismantling_number,
         p.vehicle?.vin,
         p.vehicle?.engine
@@ -408,7 +458,9 @@
       contact.addEventListener("click", e => e.stopPropagation());
 
       card.addEventListener("click", e => {
-        if (!e.target.closest("a, button")) openProduct(p);
+        if (!e.target.closest("a, button")) {
+          openProduct(p);
+        }
       });
 
       card.setAttribute("aria-label", p.name || "Część samochodowa");
@@ -460,6 +512,7 @@
       }
     } catch (e) {
       console.error("ARVORN catalog error:", e);
+
       products = [];
       render();
 
@@ -470,7 +523,10 @@
   }
 
   ["search", "category-filter", "make-filter"].forEach(id => {
-    $(id).addEventListener(id === "search" ? "input" : "change", render);
+    $(id).addEventListener(
+      id === "search" ? "input" : "change",
+      render
+    );
   });
 
   ensureModal();
@@ -478,11 +534,15 @@
   $("product-modal-close").addEventListener("click", closeProduct);
 
   $("product-modal").addEventListener("click", e => {
-    if (e.target === $("product-modal")) closeProduct();
+    if (e.target === $("product-modal")) {
+      closeProduct();
+    }
   });
 
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape") closeProduct();
+    if (e.key === "Escape") {
+      closeProduct();
+    }
   });
 
   const w = $("whatsapp-cta");
