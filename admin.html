@@ -1,252 +1,112 @@
 <!doctype html>
 <html lang="pl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panel administratora — ARVORN Auto Parts</title>
-<link rel="stylesheet" href="styles.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
-<script defer src="admin.js"></script>
-
-<style>
-.admin-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin: 22px 0;
-}
-.admin-tab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  min-height: 58px;
-  padding: 12px 10px;
-  border: 1px solid #dfe5e1;
-  border-radius: 10px;
-  background: #fff;
-  color: #26343d;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background .15s, color .15s, border-color .15s;
-}
-.admin-tab:hover {
-  border-color: #26343d;
-}
-.admin-tab[aria-selected="true"] {
-  background: #26343d;
-  color: #fff;
-  border-color: #26343d;
-}
-.admin-tab-panel[hidden] {
-  display: none !important;
-}
-.admin-tab-panel {
-  min-width: 0;
-}
-.admin-tab-panel > .admin-panel {
-  margin-top: 0;
-}
-.admin-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.admin-toolbar h2 {
-  margin-bottom: 5px;
-}
-.admin-toolbar p {
-  margin-top: 0;
-}
-.gallery-admin {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 12px;
-  margin-top: 12px;
-}
-.gallery-admin-item {
-  min-width: 0;
-  border: 1px solid #dfe5e1;
-  border-radius: 8px;
-  padding: 8px;
-  background: #f7f9f8;
-}
-.gallery-admin-item img {
-  display: block;
-  width: 100%;
-  height: 100px;
-  object-fit: contain;
-  background: #fff;
-  border-radius: 5px;
-}
-.gallery-admin-item label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 8px;
-  font-size: 12px;
-  line-height: 1.4;
-}
-.gallery-count {
-  font-size: 13px;
-  color: #65716a;
-  margin-top: 8px;
-}
-@media (max-width: 600px) {
-  .admin-tabs {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-  .admin-tab {
-    justify-content: flex-start;
-    min-height: 48px;
-    padding: 12px 14px;
-  }
-  .admin-toolbar {
-    align-items: flex-start;
-  }
-}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="TRIPL PARTS — panel administratora używanych części samochodowych.">
+  <meta name="theme-color" content="#13232d">
+  <title>TRIPL PARTS — Panel administratora</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script defer src="admin.js"></script>
 </head>
-
 <body class="admin-body">
-<header class="topbar">
-  <a class="brand" href="./">
-    <span class="brand-mark">A</span>
-    <span><b>ARVORN</b><small>AUTO PARTS</small></span>
-  </a>
-  <a class="admin-link" href="index.html">← Wróć do katalogu</a>
-</header>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="TRIPL PARTS — strona główna">
+      <span class="brand-mark">TP</span>
+      <span>
+        <b>TRIPL PARTS</b>
+        <small>USED AUTO PARTS</small>
+      </span>
+    </a>
+    <a class="admin-link" href="index.html">← Wróć do katalogu</a>
+  </header>
 
-<main class="admin-main">
-  <div class="section-heading">
-    <div>
-      <span class="eyebrow dark-eyebrow">STREFA WŁAŚCICIELA</span>
-      <h1>Panel administratora</h1>
-      <p>Zarządzaj samochodami i częściami w jednym miejscu.</p>
-    </div>
-  </div>
-
-  <div id="setup-warning" class="notice" hidden></div>
-
-  <section id="login-panel" class="admin-panel">
-    <h2>Zaloguj się</h2>
-    <p>Panel jest dostępny tylko dla autoryzowanego administratora.</p>
-
-    <form id="login-form" class="form-grid">
-      <label class="full">Adres e-mail
-        <input type="email" id="email" required autocomplete="username" placeholder="ty@firma.pl">
-      </label>
-      <label class="full">Hasło
-        <input type="password" id="password" required autocomplete="current-password" placeholder="Hasło">
-      </label>
-      <button class="button button-dark full" type="submit">Zaloguj się</button>
-    </form>
-
-    <p id="login-message" class="form-message" role="status"></p>
-  </section>
-
-  <section id="dashboard" hidden>
-    <div class="admin-toolbar">
+  <main class="admin-main">
+    <div class="section-heading">
       <div>
-        <h2>Panel zarządzania</h2>
-        <p>Zmiany zapisują się w bazie danych.</p>
+        <span class="eyebrow dark-eyebrow">STREFA WŁAŚCICIELA</span>
+        <h1>Panel administratora</h1>
+        <p>Dodawaj, edytuj i aktualizuj części w katalogu TRIPL PARTS.</p>
       </div>
-      <button id="logout" class="button button-outline" type="button">Wyloguj</button>
     </div>
 
-    <nav class="admin-tabs" role="tablist" aria-label="Sekcje panelu">
-      <button
-        class="admin-tab"
-        id="tab-product"
-        type="button"
-        role="tab"
-        aria-selected="true"
-        aria-controls="panel-product"
-        data-admin-tab="product">
-        <span aria-hidden="true">＋</span>
-        Dodaj część
-      </button>
+    <div id="setup-warning" class="notice" hidden></div>
 
-      <button
-        class="admin-tab"
-        id="tab-vehicle"
-        type="button"
-        role="tab"
-        aria-selected="false"
-        aria-controls="panel-vehicle"
-        data-admin-tab="vehicle">
-        <span aria-hidden="true">▣</span>
-        Dodaj samochód
-      </button>
+    <section id="login-panel" class="admin-panel">
+      <h2>Zaloguj się</h2>
+      <p>Panel jest dostępny tylko dla autoryzowanego administratora.</p>
 
-      <button
-        class="admin-tab"
-        id="tab-inventory"
-        type="button"
-        role="tab"
-        aria-selected="false"
-        aria-controls="panel-inventory"
-        data-admin-tab="inventory">
-        <span aria-hidden="true">☷</span>
-        Lista części
-      </button>
-    </nav>
+      <form id="login-form" class="form-grid">
+        <label class="full">
+          Adres e-mail
+          <input type="email" id="email" required autocomplete="username" placeholder="ty@firma.pl">
+        </label>
 
-    <!-- TAB 1: ADD / EDIT PRODUCT -->
-    <section
-      id="panel-product"
-      class="admin-tab-panel"
-      role="tabpanel"
-      aria-labelledby="tab-product">
+        <label class="full">
+          Hasło
+          <input type="password" id="password" required autocomplete="current-password" placeholder="Hasło">
+        </label>
 
-      <div class="admin-panel">
+        <button class="button button-dark full" type="submit">Zaloguj się</button>
+      </form>
+
+      <p id="login-message" class="form-message" role="status"></p>
+    </section>
+
+    <section id="dashboard" hidden>
+      <div class="admin-toolbar">
+        <div>
+          <h2>Twoje części <span id="admin-total" class="total-pill">0</span></h2>
+          <p>Zmiany zapisują się w bazie danych.</p>
+        </div>
+        <button id="logout" class="button button-outline">Wyloguj</button>
+      </div>
+
+      <section class="admin-panel">
         <h2 id="form-title">Dodaj nową część</h2>
-        <p>Uzupełnij dane części i przypisz ją do samochodu z demontażu.</p>
 
         <form id="product-form" class="form-grid">
           <input type="hidden" id="product-id">
 
-          <label class="full">Numer rozbiórkowy samochodu *
-            <input id="p-vehicle-number" required maxlength="50" autocomplete="off" placeholder="Wpisz numer, np. N3185">
-            <small>Wpisz numer ręcznie. Dane samochodu zostaną wyszukane automatycznie.</small>
-          </label>
-
-          <div id="p-vehicle-info" class="full notice" hidden aria-live="polite"></div>
-
-          <label>Nazwa części *
+          <label>
+            Nazwa części *
             <input id="p-name" required maxlength="140" placeholder="np. Lampa przednia lewa">
           </label>
 
-          <label>Kategoria *
+          <label>
+            Kategoria *
             <input id="p-category" required maxlength="80" placeholder="np. Oświetlenie">
           </label>
 
-          <label>Marka auta
-            <input id="p-make" maxlength="80" placeholder="np. Mercedes-Benz">
+          <label>
+            Marka auta
+            <input id="p-make" maxlength="80" placeholder="np. BMW">
           </label>
 
-          <label>Model auta
-            <input id="p-model" maxlength="100" placeholder="np. M W164">
+          <label>
+            Model auta
+            <input id="p-model" maxlength="100" placeholder="np. Seria 3 E90">
           </label>
 
-          <label>Rok / zakres lat
-            <input id="p-years" maxlength="60" placeholder="np. 2006">
+          <label>
+            Rok / zakres lat
+            <input id="p-years" maxlength="60" placeholder="np. 2005–2011">
           </label>
 
-          <label>Numer OEM / indeks
+          <label>
+            Numer OEM / indeks
             <input id="p-oem" maxlength="100" placeholder="Numer części">
           </label>
 
-          <label>Cena (PLN) *
+          <label>
+            Cena (PLN) *
             <input id="p-price" required type="number" min="0" step="0.01" placeholder="250.00">
           </label>
 
-          <label>Status
+          <label>
+            Status
             <select id="p-status">
               <option value="available">Dostępna</option>
               <option value="reserved">Zarezerwowana</option>
@@ -254,21 +114,18 @@
             </select>
           </label>
 
-          <label class="full">Opis
+          <label class="full">
+            Opis
             <textarea id="p-description" rows="3" maxlength="2000" placeholder="Stan, numer magazynowy, uwagi…"></textarea>
           </label>
 
-          <label class="full">Zdjęcia części — maksymalnie 20
-            <input id="p-image" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-            <small>Wybierz jedno lub kilka zdjęć. JPG, PNG lub WebP. Maksymalnie 5 MB na zdjęcie. Przy edycji nowe zdjęcia zostaną dodane do istniejącej galerii.</small>
+          <label class="full">
+            Zdjęcie części
+            <input id="p-image" type="file" accept="image/jpeg,image/png,image/webp">
+            <small>JPG, PNG lub WebP. Zalecane zdjęcia do 1 MB.</small>
           </label>
 
-          <div class="full">
-            <strong>Galeria zdjęć</strong>
-            <p class="gallery-count" id="gallery-count">0 z 20 zdjęć</p>
-            <div id="current-image" class="gallery-admin" aria-live="polite"></div>
-            <p class="gallery-count">Zaznacz „Usuń zdjęcie”, aby usunąć wybrane fotografie. Pozostałe zostaną zachowane.</p>
-          </div>
+          <div id="current-image" class="full current-image" hidden></div>
 
           <div class="form-actions full">
             <button class="button button-dark" type="submit" id="save-product">Zapisz część</button>
@@ -277,126 +134,12 @@
         </form>
 
         <p id="form-message" class="form-message" role="status"></p>
-      </div>
-    </section>
+      </section>
 
-    <!-- TAB 2: VEHICLES -->
-    <section
-      id="panel-vehicle"
-      class="admin-tab-panel"
-      role="tabpanel"
-      aria-labelledby="tab-vehicle"
-      hidden>
-
-      <div class="admin-panel">
-        <h2>Dodaj samochód z demontażu</h2>
-        <p>Dodaj samochód do bazy. Jego numer będzie używany przy dodawaniu części.</p>
-
-        <form id="vehicle-form" class="form-grid">
-          <label>Numer rozbiórkowy *
-            <input id="v-number" required maxlength="50" placeholder="np. N3185">
-          </label>
-
-          <label>Marka *
-            <input id="v-make" required maxlength="100" placeholder="np. Mercedes-Benz">
-          </label>
-
-          <label>Model *
-            <input id="v-model" required maxlength="100" placeholder="np. ML W164">
-          </label>
-
-          <label>Rok produkcji
-            <input id="v-year" type="number" min="1900" max="2100" placeholder="np. 2006">
-          </label>
-
-          <label>VIN
-            <input id="v-vin" maxlength="50" placeholder="Numer VIN">
-          </label>
-
-          <label>Silnik
-            <input id="v-engine" maxlength="150" placeholder="np. 3.0 CDI OM642.940">
-          </label>
-
-          <label>Paliwo
-            <select id="v-fuel">
-              <option value="">Wybierz</option>
-              <option value="Diesel">Diesel</option>
-              <option value="Benzyna">Benzyna</option>
-              <option value="LPG">LPG</option>
-              <option value="Hybryda">Hybryda</option>
-              <option value="Elektryczny">Elektryczny</option>
-            </select>
-          </label>
-
-          <label>Skrzynia biegów
-            <select id="v-transmission">
-              <option value="">Wybierz</option>
-              <option value="Manualna">Manualna</option>
-              <option value="Automatyczna">Automatyczna</option>
-            </select>
-          </label>
-
-          <label>Napęd
-            <select id="v-drivetrain">
-              <option value="">Wybierz</option>
-              <option value="FWD">FWD — przedni</option>
-              <option value="RWD">RWD — tylny</option>
-              <option value="AWD">AWD — 4x4</option>
-            </select>
-          </label>
-
-          <label>Strona kierownicy
-            <select id="v-steering-side">
-              <option value="">Wybierz</option>
-              <option value="LHD">LHD — lewa</option>
-              <option value="RHD">RHD — prawa</option>
-            </select>
-          </label>
-
-          <label class="full">Uwagi
-            <textarea id="v-notes" rows="3" maxlength="2000" placeholder="Dodatkowe informacje o samochodzie"></textarea>
-          </label>
-
-          <button class="button button-dark full" id="save-vehicle" type="submit">Dodaj samochód</button>
-        </form>
-
-        <p id="vehicle-form-message" class="form-message" role="status"></p>
-      </div>
-
-      <div class="admin-panel">
-        <h2>Dodane samochody <span id="vehicle-total" class="total-pill">0</span></h2>
-        <p>Samochody dostępne do przypisywania części.</p>
-
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Numer</th>
-                <th>Marka i model</th>
-                <th>Rok</th>
-                <th>Silnik</th>
-              </tr>
-            </thead>
-            <tbody id="vehicles-body"></tbody>
-          </table>
-        </div>
-
-        <p id="vehicles-message" class="form-message" role="status"></p>
-      </div>
-    </section>
-
-    <!-- TAB 3: EXISTING PRODUCTS -->
-    <section
-      id="panel-inventory"
-      class="admin-tab-panel"
-      role="tabpanel"
-      aria-labelledby="tab-inventory"
-      hidden>
-
-      <div class="admin-panel inventory-panel">
+      <section class="admin-panel inventory-panel">
         <div class="inventory-heading">
-          <h2>Lista części <span id="admin-total" class="total-pill">0</span></h2>
-          <input id="admin-search" type="search" placeholder="Szukaj części, OEM, marki…">
+          <h2>Lista części</h2>
+          <input id="admin-search" type="search" placeholder="Szukaj w swoich częściach…">
         </div>
 
         <div class="table-scroll">
@@ -414,14 +157,13 @@
           </table>
         </div>
 
-        <p id="inventory-message" class="form-message" role="status"></p>
-      </div>
+        <p id="inventory-message" class="form-message"></p>
+      </section>
     </section>
-  </section>
-</main>
+  </main>
 
-<footer>
-  <p>ARVORN AUTO PARTS · Panel administracyjny</p>
-</footer>
+  <footer>
+    <p>TRIPL PARTS · Panel administracyjny</p>
+  </footer>
 </body>
 </html>
