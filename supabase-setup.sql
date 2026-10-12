@@ -12,6 +12,8 @@ create table if not exists public.products (
   status text not null default 'available' check (status in ('available','reserved','sold')),
   description text,
   image_url text,
+  vehicle_id uuid,
+  dismantling_number text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -21,6 +23,24 @@ create index if not exists products_oem_idx        on public.products (oem);
 create index if not exists products_category_idx   on public.products (category);
 create index if not exists products_make_idx       on public.products (make);
 create index if not exists products_status_idx     on public.products (status);
+create index if not exists products_vehicle_idx    on public.products (vehicle_id);
+
+create table if not exists public.vehicles (
+  id uuid primary key default gen_random_uuid(),
+  dismantling_number text not null,
+  make text not null,
+  model text not null,
+  years text,
+  vin text,
+  description text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists vehicles_created_at_idx on public.vehicles (created_at desc);
+create index if not exists vehicles_dismantling_idx on public.vehicles (dismantling_number);
+create index if not exists vehicles_make_idx        on public.vehicles (make);
+create index if not exists vehicles_model_idx       on public.vehicles (model);
 
 create or replace function public.set_updated_at()
 returns trigger language plpgsql as $$
@@ -34,11 +54,23 @@ create trigger products_set_updated_at
 before update on public.products
 for each row execute function public.set_updated_at();
 
+drop trigger if exists vehicles_set_updated_at on public.vehicles;
+create trigger vehicles_set_updated_at
+before update on public.vehicles
+for each row execute function public.set_updated_at();
+
 alter table public.products enable row level security;
+alter table public.vehicles enable row level security;
 
 drop policy if exists "Public can view products" on public.products;
 create policy "Public can view products"
   on public.products for select
+  to anon, authenticated
+  using (true);
+
+drop policy if exists "Public can view vehicles" on public.vehicles;
+create policy "Public can view vehicles"
+  on public.vehicles for select
   to anon, authenticated
   using (true);
 
@@ -50,8 +82,19 @@ drop policy if exists "Only admin can write products" on public.products;
 create policy "Only admin can write products"
   on public.products for all
   to authenticated
-  using ( (auth.jwt() ->> 'email') = 'triplparts@gmail.com' )
-  with check ( (auth.jwt() ->> 'email') = 'triplparts@gmail.com' );
+  using ( (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com' )
+  with check ( (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com' );
+
+drop policy if exists "Authenticated users can insert vehicles" on public.vehicles;
+drop policy if exists "Authenticated users can update vehicles" on public.vehicles;
+drop policy if exists "Authenticated users can delete vehicles" on public.vehicles;
+drop policy if exists "Only admin can write vehicles" on public.vehicles;
+
+create policy "Only admin can write vehicles"
+  on public.vehicles for all
+  to authenticated
+  using ( (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com' )
+  with check ( (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com' );
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
@@ -81,9 +124,9 @@ create policy "Only admin can write product images"
   to authenticated
   using (
     bucket_id = 'product-images'
-    and (auth.jwt() ->> 'email') = 'triplparts@gmail.com'
+    and (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com'
   )
   with check (
     bucket_id = 'product-images'
-    and (auth.jwt() ->> 'email') = 'triplparts@gmail.com'
+    and (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com'
   );
