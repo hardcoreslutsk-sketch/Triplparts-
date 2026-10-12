@@ -5,4 +5,4 @@ window.APP_CONFIG = Object.freeze({
   PHONE_NUMBER: "+48 726 579 717",
   BUSINESS_NAME: "TRIPL PARTS",
   EMAIL: "triplparts@gmail.com"
-})
+});
