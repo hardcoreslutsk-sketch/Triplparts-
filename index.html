@@ -1,179 +1,168 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>TRIPL PARTS — Części samochodowe</title>
-  <meta name="description" content="TRIPL PARTS — używane części samochodowe. Sprawdź dostępne części i skontaktuj się z nami.">
-  <meta name="theme-color" content="#101010">
-
-  <link rel="stylesheet" href="styles.css">
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
-  <script defer src="app.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRIPL PARTS — Używane części samochodowe</title>
+<meta name="description" content="TRIPL PARTS — używane części samochodowe z Anglii. Sprawdź dostępne części i skontaktuj się z nami.">
+<meta name="theme-color" content="#0e0e0e">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script defer src="app.js"></script>
 </head>
-
 <body>
-  <header class="site-header">
-    <div class="container header-inner">
-      <a class="brand" href="index.html" aria-label="TRIPL PARTS — strona główna">
-        <span class="brand-name">TRIPL PARTS</span>
-        <span class="brand-caption">USED CAR PARTS</span>
-      </a>
 
-      <nav class="header-nav">
-        <a href="#catalog">Katalog części</a>
-        <a href="#contact">Kontakt</a>
-        <a class="admin-link" href="admin.html">Panel administratora</a>
-      </nav>
-    </div>
-  </header>
+<header class="site-header">
+<div class="container header-inner">
+<a class="brand" href="index.html">
+<span class="brand-name">TRIPL PARTS</span>
+<span class="brand-caption">USED CAR PARTS</span>
+</a>
+<nav class="header-nav">
+<a href="#catalog">Katalog</a>
+<a href="#contact">Kontakt</a>
+<a class="admin-link" href="admin.html">Panel administratora</a>
+</nav>
+</div>
+</header>
 
-  <main>
-    <section class="hero">
-      <div class="container hero-inner">
-        <div class="hero-content">
-          <span class="eyebrow">TRIPL PARTS / AUTO PARTS</span>
+<main>
+<section class="hero">
+<div class="container hero-inner">
+<div class="hero-content">
+<span class="eyebrow">UŻYWANE CZĘŚCI • Z ANGLII</span>
+<h1>Części samochodowe.<br><span>Sprawdzone i gotowe.</span></h1>
+<p>Używane części z rozbieranych samochodów. Wyszukaj po marce, modelu, numerze OEM lub numerze rozbieralni.</p>
+<a class="button button-primary" href="#catalog">Przeglądaj katalog ↘</a>
+</div>
+<div class="hero-side" aria-hidden="true">
+<span class="hero-side-number">TP</span>
+<span class="hero-side-line"></span>
+<span class="hero-side-caption">PARTS · QUALITY · SERVICE</span>
+</div>
+</div>
+</section>
 
-          <h1>Części samochodowe.<br><span>Bez zbędnych komplikacji.</span></h1>
+<section class="catalog-section" id="catalog">
+<div class="container">
+<div class="section-heading">
+<div>
+<span class="eyebrow">NASZA OFERTA</span>
+<h2>Katalog części</h2>
+<p>Znajdź część dopasowaną do swojego samochodu.</p>
+</div>
+<div class="results-counter">
+<span id="results-count">—</span>
+<span class="counter-caption">DOSTĘPNE CZĘŚCI</span>
+</div>
+</div>
 
-          <p>
-            Sprawdź dostępne części, wyszukaj odpowiedni model
-            i skontaktuj się z nami, aby uzyskać szczegóły.
-          </p>
+<div class="catalog-toolbar">
+<div class="search-field">
+<label for="search">Wyszukiwanie</label>
+<input id="search" type="search" placeholder="Nazwa, OEM, numer rozbieralni…" autocomplete="off">
+</div>
+<div class="filter-field">
+<label for="make-filter">Marka</label>
+<select id="make-filter"><option value="">Wszystkie marki</option></select>
+</div>
+<div class="filter-field">
+<label for="category-filter">Kategoria</label>
+<select id="category-filter"><option value="">Wszystkie kategorie</option></select>
+</div>
+</div>
 
-          <a class="button button-primary" href="#catalog">
-            Przeglądaj części <span aria-hidden="true">↘</span>
-          </a>
-        </div>
+<div id="catalog-status" class="catalog-status" role="status" aria-live="polite"></div>
+<div id="product-grid" class="product-grid"></div>
 
-        <div class="hero-side" aria-hidden="true">
-          <span class="hero-side-number">TP</span>
-          <span class="hero-side-line"></span>
-          <span class="hero-side-caption">PARTS. QUALITY. SERVICE.</span>
-        </div>
-      </div>
-    </section>
+<div id="empty-state" class="empty-state" hidden>
+<span class="empty-icon" aria-hidden="true">⌕</span>
+<h3>Nie znaleziono części</h3>
+<p>Spróbuj zmienić wyszukiwanie lub wybrać inną kategorię.</p>
+</div>
+</div>
+</section>
 
-    <section class="catalog-section" id="catalog">
-      <div class="container">
-        <div class="section-heading">
-          <div>
-            <span class="eyebrow">NASZA OFERTA</span>
-            <h2>Katalog części</h2>
-            <p>Znajdź część dopasowaną do swojego samochodu.</p>
-          </div>
+<section class="contact-section" id="contact">
+<div class="container contact-inner">
+<div>
+<span class="eyebrow">MASZ PYTANIA?</span>
+<h2>Szukasz konkretnej części?</h2>
+<p>Skontaktuj się z nami. Podaj markę, model samochodu oraz numer OEM lub numer rozbieralni.</p>
+</div>
+<div class="contact-actions">
+<a class="button button-primary" id="whatsapp-cta" href="#" target="_blank" rel="noopener noreferrer">WhatsApp ↗</a>
+<a class="button button-secondary" id="phone-cta" href="#">Zadzwoń</a>
+<a class="contact-email" href="mailto:triplparts@gmail.com">triplparts@gmail.com</a>
+</div>
+</div>
+</section>
+</main>
 
-          <div class="results-counter">
-            <span id="results-count">—</span>
-            <span class="counter-caption">DOSTĘPNE CZĘŚCI</span>
-          </div>
-        </div>
+<footer class="site-footer">
+<div class="container footer-inner">
+<a class="footer-brand" href="index.html">TRIPL PARTS</a>
+<span>Używane części samochodowe</span>
+<span>© <span id="current-year">2026</span> TRIPL PARTS</span>
+</div>
+</footer>
 
-        <div class="catalog-toolbar">
-          <div class="search-field">
-            <label for="search">Wyszukiwanie</label>
-            <input
-              id="search"
-              type="search"
-              placeholder="Nazwa, model, numer OEM..."
-              autocomplete="off"
-            >
-          </div>
+<!-- Product card template -->
+<template id="product-template">
+<article class="product-card" tabindex="0">
+<div class="product-image-wrap">
+<img class="product-image" src="" alt="" loading="lazy">
+<span class="stock-badge"></span>
+</div>
+<div class="product-card-content">
+<span class="product-category"></span>
+<h3 class="product-name"></h3>
+<p class="product-fitment"></p>
+<p class="product-oem"></p>
+<div class="product-card-bottom">
+<span class="product-price"></span>
+<button class="product-contact" type="button">Zapytaj ↗</button>
+</div>
+</div>
+</article>
+</template>
 
-          <div class="filter-field">
-            <label for="category-filter">Kategoria</label>
-            <select id="category-filter">
-              <option value="">Wszystkie kategorie</option>
-            </select>
-          </div>
+<!-- Product modal -->
+<div id="product-modal" class="modal" hidden>
+<div class="modal-backdrop" data-close-modal></div>
+<div class="modal-content">
+<button class="modal-close" type="button" data-close-modal aria-label="Zamknij">×</button>
+<div class="modal-gallery">
+<div class="gallery-main"><img id="modal-main-image" src="" alt=""></div>
+<button class="gallery-nav prev" type="button" id="modal-prev" aria-label="Poprzednie">‹</button>
+<button class="gallery-nav next" type="button" id="modal-next" aria-label="Następne">›</button>
+<div class="gallery-thumbs" id="modal-thumbs"></div>
+</div>
+<div class="modal-info">
+<span class="product-category" id="modal-category"></span>
+<h2 id="modal-name"></h2>
+<div class="modal-price" id="modal-price"></div>
+<div class="modal-section">
+<h4>Informacje o części</h4>
+<dl id="modal-part-info"></dl>
+</div>
+<div class="modal-section">
+<h4>Samochód dawca</h4>
+<dl id="modal-vehicle-info"></dl>
+</div>
+<p class="modal-desc" id="modal-desc"></p>
+<div class="modal-actions">
+<a class="button button-primary" id="modal-whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+<a class="button button-secondary" id="modal-phone">Zadzwoń</a>
+<a class="button button-secondary" id="modal-email">E-mail</a>
+</div>
+</div>
+</div>
+</div>
 
-          <div class="filter-field">
-            <label for="make-filter">Marka</label>
-            <select id="make-filter">
-              <option value="">Wszystkie marki</option>
-            </select>
-          </div>
-        </div>
-
-        <div id="catalog-status" class="catalog-status" role="status" aria-live="polite"></div>
-
-        <div id="product-grid" class="product-grid"></div>
-
-        <div id="empty-state" class="empty-state" hidden>
-          <span class="empty-icon" aria-hidden="true">⌕</span>
-          <h3>Nie znaleziono części</h3>
-          <p>Spróbuj zmienić wyszukiwanie lub wybrać inną kategorię.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="contact-section" id="contact">
-      <div class="container contact-inner">
-        <div>
-          <span class="eyebrow">MASZ PYTANIA?</span>
-          <h2>Szukasz konkretnej części?</h2>
-          <p>
-            Skontaktuj się z nami. Podaj markę, model samochodu
-            oraz numer OEM, jeśli go znasz.
-          </p>
-        </div>
-
-        <div class="contact-actions">
-          <a
-            class="button button-primary"
-            id="whatsapp-cta"
-            href="https://wa.me/48726579717"
-            target="_blank"
-            rel="noopener noreferrer"
-          >WhatsApp ↗</a>
-
-          <a class="button button-secondary" id="phone-cta" href="tel:+48726579717">
-            Zadzwoń
-          </a>
-
-          <a class="contact-email" href="mailto:triplparts@gmail.com">
-            triplparts@gmail.com
-          </a>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div class="container footer-inner">
-      <a class="footer-brand" href="index.html">TRIPL PARTS</a>
-      <span>Używane części samochodowe</span>
-      <span>© <span id="current-year">2026</span> TRIPL PARTS</span>
-    </div>
-  </footer>
-
-  <template id="product-template">
-    <article class="product-card">
-      <div class="product-image-wrap">
-        <img class="product-image" src="" alt="" loading="lazy">
-        <span class="stock-badge">Dostępny</span>
-      </div>
-
-      <div class="product-card-content">
-        <span class="product-category"></span>
-        <h3 class="product-name"></h3>
-        <p class="product-fitment"></p>
-        <p class="product-oem"></p>
-
-        <div class="product-card-bottom">
-          <span class="product-price"></span>
-          <a class="product-contact" href="#contact">Zapytaj ↗</a>
-        </div>
-      </div>
-    </article>
-  </template>
-
-  <script>
-    document.getElementById("current-year").textContent =
-      new Date().getFullYear();
-  </script>
+<script>
+document.getElementById("current-year").textContent = new Date().getFullYear();
+</script>
 </body>
 </html>
