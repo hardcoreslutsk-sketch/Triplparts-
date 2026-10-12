@@ -96,7 +96,7 @@
     <div class="admin-toolbar">
       <div>
         <h2>Panel zarządzania</h2>
-        <p class="muted">Zapisane dane trafiają do istniejącej bazy Supabase.</p>
+        <p class="muted">Zapisane dane trafiają do bazy Supabase.</p>
       </div>
       <button id="logout" type="button" class="admin-button secondary">Wyloguj</button>
     </div>
@@ -189,14 +189,14 @@
           </label>
 
           <label class="full">
-            Zdjęcia części
-            <input id="p-images" type="file"
-              accept="image/jpeg,image/png,image/webp" multiple>
-            <span class="muted">Możesz wybrać kilka zdjęć. Przy edycji istniejące zdjęcia pozostaną, jeśli ich nie usuniesz.</span>
+            Zdjęcie części
+            <input id="p-image" type="file"
+              accept="image/jpeg,image/png,image/webp">
+            <span class="muted">JPG, PNG lub WebP. Maksymalny rozmiar 5 MB.</span>
           </label>
 
           <div class="full">
-            <strong>Zdjęcia zapisane dla tej części</strong>
+            <strong>Zdjęcie zapisane dla tej części</strong>
             <div id="current-images" class="image-preview-list"></div>
           </div>
 
