@@ -5,23 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17201c">
   <title>TRIPL PARTS — Panel administratora</title>
-  <link rel="stylesheet" href="styles.css">
   <style>
-    body.admin-body {
+    * { box-sizing: border-box; }
+    html, body {
       margin: 0;
-      background: #f4f6f5;
-      color: #17201c;
+      padding: 0;
+      background: #f4f6f5 !important;
+      color: #17201c !important;
       font-family: Arial, Helvetica, sans-serif;
       line-height: 1.6;
     }
-    .admin-body * { box-sizing: border-box; }
-    .admin-body a { color: inherit; text-decoration: none; }
-    .admin-body h1,
-    .admin-body h2,
-    .admin-body h3 { color: #17201c; margin: 0; }
-    .admin-body p { color: #4a5550; margin: 0; }
+    a { color: #17201c; text-decoration: none; }
+    h1, h2, h3 { color: #17201c !important; margin: 0; }
+    p { color: #4a5550 !important; margin: 0; }
+    small { color: #6c7a72; }
+    strong { color: #17201c; }
+    label { color: #17201c !important; }
+    img { max-width: 100%; display: block; }
 
-    .admin-body .topbar {
+    .topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -30,24 +32,20 @@
       background: #ffffff;
       border-bottom: 1px solid #dce2de;
     }
-    .admin-body .brand {
+    .brand {
       display: flex;
       flex-direction: column;
       line-height: 1.2;
       color: #17201c;
     }
-    .admin-body .brand b {
-      font-size: 18px;
-      font-weight: 900;
-      letter-spacing: -0.5px;
-    }
-    .admin-body .brand small {
+    .brand b { font-size: 18px; font-weight: 900; letter-spacing: -0.5px; }
+    .brand small {
       margin-top: 4px;
-      color: #6c7a72;
+      color: #6c7a72 !important;
       font-size: 10px;
       letter-spacing: 2px;
     }
-    .admin-body .admin-link {
+    .admin-link {
       color: #17201c;
       font-weight: 700;
       font-size: 13px;
@@ -56,25 +54,25 @@
       border-radius: 7px;
     }
 
-    .admin-main { width:min(1180px,calc(100% - 32px)); margin:36px auto 70px; }
+    .admin-main { width: min(1180px, calc(100% - 32px)); margin: 36px auto 70px; }
 
-    .admin-body .eyebrow {
+    .eyebrow {
       display: inline-block;
-      color: #1a7a48;
+      color: #1a7a48 !important;
       font-size: 11px;
       font-weight: 800;
       letter-spacing: 2px;
       text-transform: uppercase;
     }
-    .admin-body .section-heading { margin-bottom: 22px; }
-    .admin-body .section-heading h1 {
+    .section-heading { margin-bottom: 22px; }
+    .section-heading h1 {
       margin: 10px 0 6px;
       font-size: clamp(26px, 4vw, 34px);
       line-height: 1.15;
       letter-spacing: -1px;
-      color: #17201c;
+      color: #17201c !important;
     }
-    .admin-body .section-heading p { color: #4a5550; }
+    .section-heading p { color: #4a5550 !important; }
 
     .admin-panel {
       background: #ffffff;
@@ -84,12 +82,12 @@
       margin: 20px 0;
     }
     .admin-panel h2 {
-      color: #17201c;
+      color: #17201c !important;
       font-size: 20px;
       font-weight: 800;
       margin: 0 0 8px;
     }
-    .admin-panel > p { color: #4a5550; margin: 0 0 14px; }
+    .admin-panel > p { color: #4a5550 !important; margin: 0 0 14px; }
 
     .admin-toolbar,
     .inventory-heading,
@@ -101,7 +99,7 @@
       gap: 12px;
       flex-wrap: wrap;
     }
-    .admin-toolbar h2 { color: #17201c; margin: 0 0 4px; }
+    .admin-toolbar h2 { color: #17201c !important; margin: 0 0 4px; }
     .admin-tabs {
       justify-content: flex-start;
       margin: 24px 0;
@@ -113,17 +111,16 @@
       border: 1px solid #dce2de;
       border-radius: 9px;
       background: #fff;
-      color: #17201c;
+      color: #17201c !important;
       font-weight: 700;
       cursor: pointer;
     }
     .admin-tab[aria-selected="true"] {
       background: #183d2b;
-      color: #fff;
+      color: #fff !important;
       border-color: #183d2b;
     }
-    .admin-tab-panel[hidden],
-    [hidden] { display: none !important; }
+    .admin-tab-panel[hidden], [hidden] { display: none !important; }
 
     .form-grid {
       display: grid;
@@ -136,20 +133,19 @@
       gap: 7px;
       font-size: 14px;
       font-weight: 700;
-      color: #17201c;
+      color: #17201c !important;
     }
     .form-grid input,
     .form-grid select,
     .form-grid textarea,
     .inventory-heading input {
-      box-sizing: border-box;
       width: 100%;
       min-width: 0;
       padding: 12px;
       border: 1px solid #cfd8d2;
       border-radius: 8px;
       background: #fff;
-      color: #17201c;
+      color: #17201c !important;
       font: inherit;
       font-weight: 400;
     }
@@ -167,26 +163,26 @@
       font-weight: 700;
       cursor: pointer;
       background: #183d2b;
-      color: #fff;
+      color: #fff !important;
     }
     .admin-button.secondary {
       background: #eef2ef;
-      color: #17201c;
+      color: #17201c !important;
       border: 1px solid #d2dbd5;
     }
     .admin-button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .form-message { margin-top: 14px; line-height: 1.55; color: #4a5550; overflow-wrap: anywhere; }
+    .form-message { margin-top: 14px; line-height: 1.55; color: #4a5550 !important; overflow-wrap: anywhere; }
     .form-message:empty { display: none; }
-    .form-message.error { color: #a72e2e; }
-    .form-message.success { color: #1a7a48; }
+    .form-message.error { color: #a72e2e !important; }
+    .form-message.success { color: #1a7a48 !important; }
 
     .notice {
       margin-top: 14px;
       padding: 13px 15px;
       border-radius: 8px;
       background: #fff1dc;
-      color: #754b16;
+      color: #754b16 !important;
       line-height: 1.55;
     }
 
@@ -195,7 +191,7 @@
       padding: 3px 9px;
       border-radius: 20px;
       background: #e9efeb;
-      color: #17201c;
+      color: #17201c !important;
       font-size: 13px;
     }
 
@@ -207,13 +203,13 @@
       border-bottom: 1px solid #e2e7e3;
       text-align: left;
       vertical-align: top;
-      color: #17201c;
+      color: #17201c !important;
     }
     .table-scroll th {
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: .04em;
-      color: #6c7a72;
+      color: #6c7a72 !important;
     }
     .table-scroll td { font-size: 14px; }
 
@@ -223,7 +219,7 @@
       border-radius: 6px;
       border: 1px solid #d2dbd5;
       background: #fff;
-      color: #17201c;
+      color: #17201c !important;
       cursor: pointer;
       font-weight: 700;
     }
@@ -237,11 +233,11 @@
       border: 1px solid #dce2de;
     }
 
-    .muted { color: #6c7a72; font-size: 13px; }
+    .muted { color: #6c7a72 !important; font-size: 13px; }
     .admin-footer {
       padding: 24px 16px;
       text-align: center;
-      color: #6c7a72;
+      color: #6c7a72 !important;
       background: #ffffff;
       border-top: 1px solid #dce2de;
       font-size: 12px;
@@ -259,7 +255,7 @@
   <script src="config.js"></script>
   <script defer src="admin.js"></script>
 </head>
-<body class="admin-body">
+<body>
 
 <header class="topbar">
   <a class="brand" href="index.html" aria-label="TRIPL PARTS">
