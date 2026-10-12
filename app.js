@@ -29,13 +29,13 @@
 
   const placeholder = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="440" viewBox="0 0 640 440">' +
-    '<rect width="640" height="440" fill="#edf0ef"/>' +
-    '<g fill="none" stroke="#b6c0c0" stroke-width="5">' +
+    '<rect width="640" height="440" fill="#222"/>' +
+    '<g fill="none" stroke="#555" stroke-width="5">' +
     '<path d="M170 280h300l-35-80H235z"/>' +
     '<circle cx="235" cy="300" r="32"/>' +
     '<circle cx="405" cy="300" r="32"/>' +
     '<path d="M260 205l28-38h90l40 38"/></g>' +
-    '<text x="320" y="375" font-family="Arial" font-size="18" fill="#7d898a" text-anchor="middle">TRIPL PARTS</text>' +
+    '<text x="320" y="375" font-family="Arial" font-size="18" fill="#888" text-anchor="middle">TRIPL PARTS</text>' +
     '</svg>'
   )}`;
 
@@ -59,7 +59,6 @@
       p.oem ? '| OEM: ' + safe(p.oem) : '',
       p.price != null ? '| Cena: ' + money(p.price) : ''
     ].filter(Boolean).join(' ');
-
     const encoded = encodeURIComponent(msg);
     return number ? `https://wa.me/${number}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
   }
@@ -110,9 +109,7 @@
       const badge = el.querySelector('.stock-badge');
       badge.textContent = statusText(p.status);
       badge.classList.add(p.status || 'available');
-      if (p.status === 'reserved') {
-        badge.textContent = 'Zapytaj o dostępność';
-      }
+      if (p.status === 'reserved') badge.textContent = 'Zapytaj o dostępność';
 
       el.querySelector('.product-category').textContent = p.category || 'Części samochodowe';
       el.querySelector('.product-name').textContent = p.name;
@@ -128,20 +125,19 @@
       grid.appendChild(el);
     });
 
-    $('results-count').textContent =
-      `${filtered.length} ${filtered.length === 1 ? 'produkt'
-        : filtered.length < 5 ? 'produkty' : 'produktów'}`;
+    $('results-count').textContent = String(filtered.length);
     $('empty-state').hidden = filtered.length !== 0;
   }
 
   async function load() {
+    const status = $('catalog-status');
+    if (status) status.textContent = 'Ładowanie katalogu...';
+
     if (!client) {
       products = demo;
       setFilters();
       render();
-      $('catalog-status').hidden = false;
-      $('catalog-status').textContent =
-        'Tryb demonstracyjny: widzisz przykładowe produkty. Aby uruchomić prawdziwy katalog, skonfiguruj Supabase zgodnie z instrukcją README.';
+      if (status) status.textContent = 'Tryb demonstracyjny: widzisz przykładowe produkty. Aby uruchomić prawdziwy katalog, skonfiguruj Supabase zgodnie z instrukcją README.';
       return;
     }
 
@@ -158,18 +154,14 @@
       render();
 
       if (!products.length) {
-        $('catalog-status').hidden = false;
-        $('catalog-status').textContent =
-          'Katalog jest jeszcze pusty. Dodaj pierwsze części w panelu administratora.';
+        if (status) status.textContent = 'Katalog jest jeszcze pusty. Dodaj pierwsze części w panelu administratora.';
       } else {
-        $('catalog-status').hidden = true;
+        if (status) status.textContent = '';
       }
     } catch (e) {
       products = [];
       render();
-      $('catalog-status').hidden = false;
-      $('catalog-status').textContent =
-        'Nie udało się połączyć z katalogiem. Sprawdź konfigurację Supabase i połączenie internetowe.';
+      if (status) status.textContent = 'Nie udało się połączyć z katalogiem. Sprawdź konfigurację Supabase i połączenie internetowe.';
       console.error(e);
     }
   }
@@ -179,23 +171,27 @@
   );
 
   const w = $('whatsapp-cta');
-  const waNumber = (cfg.WHATSAPP_NUMBER || '').replace(/\D/g, '');
-  const waConfigured = waNumber && !cfg.WHATSAPP_NUMBER.includes('123456789');
-  w.href = waConfigured ? `https://wa.me/${waNumber}` : 'https://wa.me/';
-  w.target = '_blank';
-  w.rel = 'noopener';
+  if (w) {
+    const waNumber = (cfg.WHATSAPP_NUMBER || '').replace(/\D/g, '');
+    const waConfigured = waNumber && !cfg.WHATSAPP_NUMBER.includes('123456789');
+    w.href = waConfigured ? `https://wa.me/${waNumber}` : 'https://wa.me/';
+    w.target = '_blank';
+    w.rel = 'noopener';
+  }
 
   const ph = $('phone-cta');
-  const phoneRaw = cfg.PHONE_NUMBER || '';
-  const phoneConfigured = phoneRaw && !phoneRaw.includes('123 456 789');
-  if (phoneConfigured) {
-    ph.href = 'tel:' + phoneRaw.replace(/[^+\d]/g, '');
-  } else {
-    ph.href = 'javascript:void(0)';
-    ph.addEventListener('click', e => {
-      e.preventDefault();
-      alert('Dodaj numer telefonu w pliku config.js.');
-    });
+  if (ph) {
+    const phoneRaw = cfg.PHONE_NUMBER || '';
+    const phoneConfigured = phoneRaw && !phoneRaw.includes('123 456 789');
+    if (phoneConfigured) {
+      ph.href = 'tel:' + phoneRaw.replace(/[^+\d]/g, '');
+    } else {
+      ph.href = 'javascript:void(0)';
+      ph.addEventListener('click', e => {
+        e.preventDefault();
+        alert('Dodaj numer telefonu w pliku config.js.');
+      });
+    }
   }
 
   load();
