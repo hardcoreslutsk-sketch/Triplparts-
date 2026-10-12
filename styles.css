@@ -371,10 +371,6 @@ img {
   font-size: 13px;
 }
 
-.catalog-status:empty {
-  display: none;
-}
-
 .product-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -425,6 +421,16 @@ img {
   border-radius: 4px;
   font-size: 10px;
   font-weight: 800;
+}
+
+.stock-badge.reserved {
+  background: #ffd97a;
+  color: #4d3300;
+}
+
+.stock-badge.sold {
+  background: #444;
+  color: #ddd;
 }
 
 .product-card-content {
