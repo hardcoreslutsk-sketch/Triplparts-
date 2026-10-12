@@ -1,132 +1,111 @@
+drop table if exists public.product_images cascade;
+drop table if exists public.products cascade;
+drop table if exists public.vehicles cascade;
+
 create extension if not exists pgcrypto;
 
-create table if not exists public.products (
+create table public.vehicles (
   id uuid primary key default gen_random_uuid(),
-  name text not null,
-  category text not null,
-  make text,
-  model text,
-  years text,
-  oem text,
-  price numeric(12,2) not null check (price >= 0),
-  status text not null default 'available' check (status in ('available','reserved','sold')),
-  description text,
-  image_url text,
-  vehicle_id uuid,
-  dismantling_number text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create index if not exists products_created_at_idx on public.products (created_at desc);
-create index if not exists products_oem_idx        on public.products (oem);
-create index if not exists products_category_idx   on public.products (category);
-create index if not exists products_make_idx       on public.products (make);
-create index if not exists products_status_idx     on public.products (status);
-create index if not exists products_vehicle_idx    on public.products (vehicle_id);
-
-create table if not exists public.vehicles (
-  id uuid primary key default gen_random_uuid(),
-  dismantling_number text not null,
+  dismantling_number text not null unique,
   make text not null,
   model text not null,
   years text,
   vin text,
-  description text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  engine_volume text,
+  engine_fuel text,
+  engine_code text,
+  gearbox text,
+  drive text,
+  body text,
+  color text,
+  steering text,
+  mileage integer,
+  notes text,
+  created_at timestamptz not null default now()
 );
 
-create index if not exists vehicles_created_at_idx on public.vehicles (created_at desc);
-create index if not exists vehicles_dismantling_idx on public.vehicles (dismantling_number);
-create index if not exists vehicles_make_idx        on public.vehicles (make);
-create index if not exists vehicles_model_idx       on public.vehicles (model);
+create index vehicles_dismantling_idx on public.vehicles (dismantling_number);
+create index vehicles_make_idx on public.vehicles (make);
+create index vehicles_model_idx on public.vehicles (model);
 
-create or replace function public.set_updated_at()
-returns trigger language plpgsql as $$
-begin
-  new.updated_at = now();
-  return new;
-end $$;
+create table public.products (
+  id uuid primary key default gen_random_uuid(),
+  vehicle_id uuid references public.vehicles(id) on delete set null,
+  name text not null,
+  category text not null,
+  oem text,
+  condition text,
+  price_pln numeric(12,2) not null check (price_pln >= 0),
+  status text not null default 'available'
+    check (status in ('available','reserved','sold','hidden')),
+  description text,
+  created_at timestamptz not null default now()
+);
 
-drop trigger if exists products_set_updated_at on public.products;
-create trigger products_set_updated_at
-before update on public.products
-for each row execute function public.set_updated_at();
+create index products_vehicle_idx on public.products (vehicle_id);
+create index products_category_idx on public.products (category);
+create index products_status_idx on public.products (status);
+create index products_created_idx on public.products (created_at desc);
 
-drop trigger if exists vehicles_set_updated_at on public.vehicles;
-create trigger vehicles_set_updated_at
-before update on public.vehicles
-for each row execute function public.set_updated_at();
+create table public.product_images (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references public.products(id) on delete cascade,
+  url text not null,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
 
-alter table public.products enable row level security;
+create index product_images_product_idx on public.product_images (product_id, sort_order);
+
 alter table public.vehicles enable row level security;
-
-drop policy if exists "Public can view products" on public.products;
-create policy "Public can view products"
-  on public.products for select
-  to anon, authenticated
-  using (true);
+alter table public.products enable row level security;
+alter table public.product_images enable row level security;
 
 drop policy if exists "Public can view vehicles" on public.vehicles;
-create policy "Public can view vehicles"
-  on public.vehicles for select
-  to anon, authenticated
-  using (true);
+create policy "Public can view vehicles" on public.vehicles for select
+  to anon, authenticated using (true);
 
-drop policy if exists "Authenticated users can insert products" on public.products;
-drop policy if exists "Authenticated users can update products" on public.products;
-drop policy if exists "Authenticated users can delete products" on public.products;
-drop policy if exists "Only admin can write products" on public.products;
-
-create policy "Only admin can write products"
-  on public.products for all
+drop policy if exists "Admin can write vehicles" on public.vehicles;
+create policy "Admin can write vehicles" on public.vehicles for all
   to authenticated
-  using ( (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com' )
-  with check ( (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com' );
+  using ((auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com')
+  with check ((auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com');
 
-drop policy if exists "Authenticated users can insert vehicles" on public.vehicles;
-drop policy if exists "Authenticated users can update vehicles" on public.vehicles;
-drop policy if exists "Authenticated users can delete vehicles" on public.vehicles;
-drop policy if exists "Only admin can write vehicles" on public.vehicles;
+drop policy if exists "Public can view products" on public.products;
+create policy "Public can view products" on public.products for select
+  to anon, authenticated using (true);
 
-create policy "Only admin can write vehicles"
-  on public.vehicles for all
+drop policy if exists "Admin can write products" on public.products;
+create policy "Admin can write products" on public.products for all
   to authenticated
-  using ( (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com' )
-  with check ( (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com' );
+  using ((auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com')
+  with check ((auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com');
+
+drop policy if exists "Public can view product images" on public.product_images;
+create policy "Public can view product images" on public.product_images for select
+  to anon, authenticated using (true);
+
+drop policy if exists "Admin can write product images" on public.product_images;
+create policy "Admin can write product images" on public.product_images for all
+  to authenticated
+  using ((auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com')
+  with check ((auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com');
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values (
-  'product-images',
-  'product-images',
-  true,
-  5242880,
-  array['image/jpeg','image/png','image/webp']
-)
+values ('product-images','product-images', true, 5242880,
+  array['image/jpeg','image/png','image/webp'])
 on conflict (id) do update
-  set public = true,
-      file_size_limit = 5242880,
+  set public = true, file_size_limit = 5242880,
       allowed_mime_types = array['image/jpeg','image/png','image/webp'];
 
-drop policy if exists "Anyone can view product images" on storage.objects;
-create policy "Anyone can view product images"
-  on storage.objects for select
+drop policy if exists "Anyone can view product images storage" on storage.objects;
+create policy "Anyone can view product images storage" on storage.objects for select
   using (bucket_id = 'product-images');
 
-drop policy if exists "Authenticated users can upload product images" on storage.objects;
-drop policy if exists "Authenticated users can update product images" on storage.objects;
-drop policy if exists "Authenticated users can delete product images" on storage.objects;
-drop policy if exists "Only admin can write product images" on storage.objects;
-
-create policy "Only admin can write product images"
-  on storage.objects for all
+drop policy if exists "Admin can write product images storage" on storage.objects;
+create policy "Admin can write product images storage" on storage.objects for all
   to authenticated
-  using (
-    bucket_id = 'product-images'
-    and (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com'
-  )
-  with check (
-    bucket_id = 'product-images'
-    and (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com'
-  );
+  using (bucket_id = 'product-images'
+    and (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com')
+  with check (bucket_id = 'product-images'
+    and (auth.jwt() ->> 'email') = 'bigmusorka08@gmail.com');
