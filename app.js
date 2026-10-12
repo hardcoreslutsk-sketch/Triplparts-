@@ -222,6 +222,22 @@
     if (e.key === 'ArrowRight') $('modal-next').click();
   });
 
+  // ===== THEME TOGGLE =====
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      const root = document.documentElement;
+      const isLight = root.getAttribute('data-theme') === 'light';
+      if (isLight) {
+        root.removeAttribute('data-theme');
+        try { localStorage.setItem('tp-theme', 'dark'); } catch(e){}
+      } else {
+        root.setAttribute('data-theme', 'light');
+        try { localStorage.setItem('tp-theme', 'light'); } catch(e){}
+      }
+    });
+  }
+
   // ===== LOAD =====
   async function load() {
     const status = $('catalog-status');
