@@ -1,531 +1,247 @@
 <!doctype html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#17201c">
-  <title>TRIPL PARTS — Panel administratora</title>
-  <style>
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #f4f6f5 !important;
-      color: #17201c !important;
-      font-family: Arial, Helvetica, sans-serif;
-      line-height: 1.6;
-    }
-    a { color: #17201c; text-decoration: none; }
-    h1, h2, h3 { color: #17201c !important; margin: 0; }
-    p { color: #4a5550 !important; margin: 0; }
-    small { color: #6c7a72; }
-    strong { color: #17201c; }
-    label { color: #17201c !important; }
-    img { max-width: 100%; display: block; }
-
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 14px 20px;
-      background: #ffffff;
-      border-bottom: 1px solid #dce2de;
-    }
-    .brand {
-      display: flex;
-      flex-direction: column;
-      line-height: 1.2;
-      color: #17201c;
-    }
-    .brand b { font-size: 18px; font-weight: 900; letter-spacing: -0.5px; }
-    .brand small {
-      margin-top: 4px;
-      color: #6c7a72 !important;
-      font-size: 10px;
-      letter-spacing: 2px;
-    }
-    .admin-link {
-      color: #17201c;
-      font-weight: 700;
-      font-size: 13px;
-      padding: 8px 12px;
-      border: 1px solid #dce2de;
-      border-radius: 7px;
-    }
-
-    .admin-main { width: min(1180px, calc(100% - 32px)); margin: 36px auto 70px; }
-
-    .eyebrow {
-      display: inline-block;
-      color: #1a7a48 !important;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-    }
-    .section-heading { margin-bottom: 22px; }
-    .section-heading h1 {
-      margin: 10px 0 6px;
-      font-size: clamp(26px, 4vw, 34px);
-      line-height: 1.15;
-      letter-spacing: -1px;
-      color: #17201c !important;
-    }
-    .section-heading p { color: #4a5550 !important; }
-
-    .admin-panel {
-      background: #ffffff;
-      border: 1px solid #dce2de;
-      border-radius: 14px;
-      padding: 22px;
-      margin: 20px 0;
-    }
-    .admin-panel h2 {
-      color: #17201c !important;
-      font-size: 20px;
-      font-weight: 800;
-      margin: 0 0 8px;
-    }
-    .admin-panel > p { color: #4a5550 !important; margin: 0 0 14px; }
-
-    .admin-toolbar,
-    .inventory-heading,
-    .form-actions,
-    .admin-tabs {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .admin-toolbar h2 { color: #17201c !important; margin: 0 0 4px; }
-    .admin-tabs {
-      justify-content: flex-start;
-      margin: 24px 0;
-      border-bottom: 1px solid #dce2de;
-      padding-bottom: 12px;
-    }
-    .admin-tab {
-      padding: 12px 18px;
-      border: 1px solid #dce2de;
-      border-radius: 9px;
-      background: #fff;
-      color: #17201c !important;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .admin-tab[aria-selected="true"] {
-      background: #183d2b;
-      color: #fff !important;
-      border-color: #183d2b;
-    }
-    .admin-tab-panel[hidden], [hidden] { display: none !important; }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-    }
-    .form-grid label {
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-      font-size: 14px;
-      font-weight: 700;
-      color: #17201c !important;
-    }
-    .form-grid input,
-    .form-grid select,
-    .form-grid textarea,
-    .inventory-heading input {
-      width: 100%;
-      min-width: 0;
-      padding: 12px;
-      border: 1px solid #cfd8d2;
-      border-radius: 8px;
-      background: #fff;
-      color: #17201c !important;
-      font: inherit;
-      font-weight: 400;
-    }
-    .form-grid input::placeholder,
-    .form-grid textarea::placeholder,
-    .inventory-heading input::placeholder { color: #94a09a; }
-    .form-grid input[type=file] { padding: 9px; }
-    .full { grid-column: 1 / -1; }
-    .form-actions { justify-content: flex-start; }
-
-    .admin-button {
-      border: 0;
-      border-radius: 8px;
-      padding: 11px 15px;
-      font-weight: 700;
-      cursor: pointer;
-      background: #183d2b;
-      color: #fff !important;
-    }
-    .admin-button.secondary {
-      background: #eef2ef;
-      color: #17201c !important;
-      border: 1px solid #d2dbd5;
-    }
-    .admin-button:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    .form-message { margin-top: 14px; line-height: 1.55; color: #4a5550 !important; overflow-wrap: anywhere; }
-    .form-message:empty { display: none; }
-    .form-message.error { color: #a72e2e !important; }
-    .form-message.success { color: #1a7a48 !important; }
-
-    .notice {
-      margin-top: 14px;
-      padding: 13px 15px;
-      border-radius: 8px;
-      background: #fff1dc;
-      color: #754b16 !important;
-      line-height: 1.55;
-    }
-
-    .total-pill {
-      display: inline-block;
-      padding: 3px 9px;
-      border-radius: 20px;
-      background: #e9efeb;
-      color: #17201c !important;
-      font-size: 13px;
-    }
-
-    .table-scroll { width: 100%; overflow-x: auto; margin-top: 16px; }
-    .table-scroll table { width: 100%; border-collapse: collapse; min-width: 620px; }
-    .table-scroll th,
-    .table-scroll td {
-      padding: 12px 10px;
-      border-bottom: 1px solid #e2e7e3;
-      text-align: left;
-      vertical-align: top;
-      color: #17201c !important;
-    }
-    .table-scroll th {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-      color: #6c7a72 !important;
-    }
-    .table-scroll td { font-size: 14px; }
-
-    .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-    .row-actions button {
-      padding: 7px 9px;
-      border-radius: 6px;
-      border: 1px solid #d2dbd5;
-      background: #fff;
-      color: #17201c !important;
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    .image-preview-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-    .image-preview-item img {
-      width: 100px;
-      height: 85px;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 1px solid #dce2de;
-    }
-
-    .muted { color: #6c7a72 !important; font-size: 13px; }
-    .admin-footer {
-      padding: 24px 16px;
-      text-align: center;
-      color: #6c7a72 !important;
-      background: #ffffff;
-      border-top: 1px solid #dce2de;
-      font-size: 12px;
-    }
-
-    @media (max-width: 650px) {
-      .admin-main { width: calc(100% - 22px); margin-top: 22px; }
-      .admin-panel { padding: 15px; }
-      .form-grid { grid-template-columns: 1fr; }
-      .full { grid-column: 1; }
-      .admin-tab { flex: 1; padding: 11px 8px; font-size: 13px; }
-    }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
-  <script defer src="admin.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TRIPL PARTS — Panel administratora</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#0e0e0e;color:#f2f2f2;font-family:Arial,Helvetica,sans-serif;line-height:1.6}
+a{color:inherit;text-decoration:none}
+h1,h2,h3{margin:0;color:#fff;font-weight:900;letter-spacing:-.5px}
+p{margin:0;color:#a0a0a0}
+label{color:#e0e0e0;font-weight:700;font-size:14px}
+img{max-width:100%;display:block}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 22px;background:#141414;border-bottom:1px solid #262626}
+.brand{display:flex;flex-direction:column;line-height:1.15}
+.brand b{font-size:20px;color:#fff;font-weight:900;letter-spacing:-.5px}
+.brand small{margin-top:4px;color:#d6ff3f;font-size:10px;font-weight:800;letter-spacing:2px}
+.admin-link{color:#e6e6e6;font-weight:700;font-size:13px;padding:8px 13px;border:1px solid #2c2c2c;border-radius:7px}
+.admin-link:hover{border-color:#d6ff3f;color:#d6ff3f}
+.admin-main{width:min(1200px,calc(100% - 32px));margin:36px auto 70px}
+.eyebrow{display:inline-block;color:#d6ff3f;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+.section-heading{margin-bottom:22px}
+.section-heading h1{margin:10px 0 6px;font-size:clamp(26px,4vw,36px);color:#fff}
+.admin-panel{background:#161616;border:1px solid #262626;border-radius:14px;padding:22px;margin:20px 0}
+.admin-panel h2{font-size:20px;margin:0 0 8px;color:#fff}
+.admin-panel>p{color:#a0a0a0;margin:0 0 14px}
+.admin-toolbar,.inventory-heading,.form-actions,.admin-tabs{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.admin-tabs{justify-content:flex-start;margin:24px 0;border-bottom:1px solid #262626;padding-bottom:12px}
+.admin-tab{padding:12px 18px;border:1px solid #2c2c2c;border-radius:9px;background:#1a1a1a;color:#e0e0e0;font-weight:700;cursor:pointer}
+.admin-tab[aria-selected="true"]{background:#d6ff3f;color:#111;border-color:#d6ff3f}
+.admin-tab-panel[hidden],[hidden]{display:none!important}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.form-grid label{display:flex;flex-direction:column;gap:7px}
+.form-grid input,.form-grid select,.form-grid textarea,.inventory-heading input{width:100%;min-width:0;padding:12px;border:1px solid #2c2c2c;border-radius:8px;background:#0f0f0f;color:#f5f5f5;font:inherit;font-weight:400;outline:none}
+.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus,.inventory-heading input:focus{border-color:#d6ff3f}
+.form-grid input::placeholder,.form-grid textarea::placeholder,.inventory-heading input::placeholder{color:#666}
+.form-grid input[type=file]{padding:9px}
+.full{grid-column:1/-1}
+.form-actions{justify-content:flex-start}
+.admin-button{border:0;border-radius:8px;padding:12px 18px;font-weight:800;cursor:pointer;background:#d6ff3f;color:#111;transition:background .15s}
+.admin-button:hover{background:#e3ff78}
+.admin-button.secondary{background:#1a1a1a;color:#e6e6e6;border:1px solid #2c2c2c}
+.admin-button.secondary:hover{border-color:#d6ff3f;color:#d6ff3f}
+.admin-button.danger{background:#a72e2e;color:#fff}
+.admin-button:disabled{opacity:.5;cursor:not-allowed}
+.form-message{margin-top:14px;color:#a0a0a0;overflow-wrap:anywhere}
+.form-message:empty{display:none}
+.form-message.error{color:#ff8b8b}
+.form-message.success{color:#a8f0b8}
+.notice{margin-top:14px;padding:13px 15px;border-radius:8px;background:#2a2210;color:#ffd98a;border:1px solid #4a3a10}
+.total-pill{display:inline-block;padding:3px 10px;border-radius:20px;background:#242424;color:#d6ff3f;font-size:13px;font-weight:800}
+.table-scroll{width:100%;overflow-x:auto;margin-top:16px}
+.table-scroll table{width:100%;border-collapse:collapse;min-width:760px}
+.table-scroll th,.table-scroll td{padding:12px 10px;border-bottom:1px solid #262626;text-align:left;vertical-align:top;color:#e6e6e6}
+.table-scroll th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#888;font-weight:700}
+.table-scroll td{font-size:14px}
+.table-thumb{width:56px;height:56px;object-fit:cover;border-radius:6px;background:#222}
+.row-actions{display:flex;flex-wrap:wrap;gap:6px}
+.row-actions button{padding:7px 10px;border-radius:6px;border:1px solid #2c2c2c;background:#1a1a1a;color:#e6e6e6;cursor:pointer;font-weight:700;font-size:12px}
+.row-actions button:hover{border-color:#d6ff3f;color:#d6ff3f}
+.row-actions button.danger:hover{border-color:#ff6b6b;color:#ff6b6b}
+.thumb-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.thumb{position:relative;width:120px;border:1px solid #2c2c2c;border-radius:8px;overflow:hidden;background:#0f0f0f}
+.thumb img{width:100%;height:100px;object-fit:cover;display:block}
+.thumb-bar{display:flex;justify-content:space-between;gap:4px;padding:4px;border-top:1px solid #262626}
+.thumb-bar button{flex:1;padding:5px 0;font-size:12px;border:1px solid #2c2c2c;border-radius:5px;background:#1a1a1a;color:#e6e6e6;cursor:pointer}
+.thumb-bar button.danger:hover{border-color:#ff6b6b;color:#ff6b6b}
+.help{font-size:12px;color:#8a8a8a;margin-top:6px;line-height:1.5}
+.muted{color:#8a8a8a;font-size:13px}
+.vehicle-info-box{background:#1a2418;border:1px solid #2c4028;border-radius:10px;padding:16px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 20px;font-size:13px;color:#e6e6e6}
+.vehicle-info-box b{display:block;font-size:11px;color:#7aa06a;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.vehicle-info-box span{color:#f0f0f0;word-break:break-word}
+.image-preview-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.image-preview-item img{width:120px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #2c2c2c}
+.admin-footer{padding:28px 16px;text-align:center;color:#666;background:#0e0e0e;border-top:1px solid #1e1e1e;font-size:12px}
+@media (max-width:720px){
+.admin-main{width:calc(100% - 22px);margin-top:22px}
+.admin-panel{padding:16px}
+.form-grid{grid-template-columns:1fr}
+.full{grid-column:1}
+.admin-tab{flex:1;padding:11px 8px;font-size:13px}
+.vehicle-info-box{grid-template-columns:1fr 1fr}
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script defer src="admin.js"></script>
 </head>
 <body>
 
 <header class="topbar">
-  <a class="brand" href="index.html" aria-label="TRIPL PARTS">
-    <span><b>TRIPL PARTS</b><small>USED AUTO PARTS</small></span>
-  </a>
-  <a class="admin-link" href="index.html">← Wróć do katalogu</a>
+<a class="brand" href="index.html">
+<span><b>TRIPL PARTS</b><small>USED AUTO PARTS</small></span>
+</a>
+<a class="admin-link" href="index.html">← Wróć do katalogu</a>
 </header>
 
 <main class="admin-main">
-  <div class="section-heading">
-    <div>
-      <span class="eyebrow">STREFA WŁAŚCICIELA</span>
-      <h1>Panel administratora</h1>
-      <p>Zarządzaj częściami i rozbieranymi samochodami.</p>
-    </div>
-  </div>
+<div class="section-heading">
+<div>
+<span class="eyebrow">STREFA WŁAŚCICIELA</span>
+<h1>Panel administratora</h1>
+<p>Zarządzaj rozbieralniami, częściami i asortymentem.</p>
+</div>
+</div>
 
-  <div id="setup-warning" class="notice" role="status" hidden></div>
+<div id="setup-warning" class="notice" role="status" hidden></div>
 
-  <section id="login-panel" class="admin-panel">
-    <h2>Logowanie</h2>
-    <p class="muted">Zaloguj się na konto administratora Supabase.</p>
-    <form id="login-form" class="form-grid">
-      <label class="full">
-        Adres e-mail
-        <input type="email" id="email" required autocomplete="username">
-      </label>
-      <label class="full">
-        Hasło
-        <input type="password" id="password" required autocomplete="current-password">
-      </label>
-      <div class="full">
-        <button class="admin-button" type="submit" id="login-button">Zaloguj się</button>
-      </div>
-    </form>
-    <p id="login-message" class="form-message" role="status"></p>
-  </section>
+<section id="login-panel" class="admin-panel">
+<h2>Logowanie</h2>
+<p class="muted">Zaloguj się na konto administratora Supabase.</p>
+<form id="login-form" class="form-grid">
+<label class="full">Adres e-mail<input type="email" id="email" required autocomplete="username"></label>
+<label class="full">Hasło<input type="password" id="password" required autocomplete="current-password"></label>
+<div class="full"><button class="admin-button" type="submit">Zaloguj się</button></div>
+</form>
+<p id="login-message" class="form-message" role="status"></p>
+</section>
 
-  <section id="dashboard" hidden>
-    <div class="admin-toolbar">
-      <div>
-        <h2>Panel zarządzania</h2>
-        <p class="muted">Zapisane dane trafiają do bazy Supabase.</p>
-      </div>
-      <button id="logout" type="button" class="admin-button secondary">Wyloguj</button>
-    </div>
+<section id="dashboard" hidden>
+<div class="admin-toolbar">
+<div>
+<h2>Panel zarządzania</h2>
+<p class="muted">Wszystkie dane zapisują się w bazie Supabase.</p>
+</div>
+<button id="logout" type="button" class="admin-button secondary">Wyloguj</button>
+</div>
 
-    <div class="admin-tabs" role="tablist" aria-label="Sekcje panelu">
-      <button class="admin-tab" id="tab-products" type="button"
-        role="tab" aria-selected="true" aria-controls="panel-products">
-        Części
-      </button>
-      <button class="admin-tab" id="tab-vehicles" type="button"
-        role="tab" aria-selected="false" aria-controls="panel-vehicles">
-        Rozbieralnie
-      </button>
-    </div>
+<div class="admin-tabs" role="tablist">
+<button class="admin-tab" id="tab-vehicles" type="button" aria-selected="true">Rozbieralnie</button>
+<button class="admin-tab" id="tab-product" type="button" aria-selected="false">Dodaj część</button>
+<button class="admin-tab" id="tab-list" type="button" aria-selected="false">Asortyment</button>
+</div>
 
-    <section id="panel-products" class="admin-tab-panel"
-      role="tabpanel" aria-labelledby="tab-products">
+<section id="panel-vehicles" class="admin-tab-panel">
+<section class="admin-panel">
+<h2 id="vehicle-form-title">Dodaj rozbieralnię</h2>
+<p class="muted">Numer rozbieralni i dane samochodu dawcy.</p>
+<form id="vehicle-form" class="form-grid">
+<input type="hidden" id="vehicle-id">
+<label class="full">Numer rozbieralni *<input id="v-dismantling-number" required maxlength="40" placeholder="np. N3596"></label>
+<label>Marka *<input id="v-make" required maxlength="80" placeholder="np. Renault"></label>
+<label>Model *<input id="v-model" required maxlength="120" placeholder="np. Trafic 2 generation"></label>
+<label>Rok<input id="v-years" maxlength="20" placeholder="np. 2005"></label>
+<label>VIN<input id="v-vin" maxlength="40" placeholder="np. VF1FLACA65V232183"></label>
+<label>Pojemność silnika<input id="v-engine-volume" maxlength="20" placeholder="np. 1.9"></label>
+<label>Rodzaj paliwa<input id="v-engine-fuel" maxlength="40" placeholder="np. diesel"></label>
+<label>Kod silnika<input id="v-engine-code" maxlength="60" placeholder="np. F9Q 760"></label>
+<label>Skrzynia biegów<input id="v-gearbox" maxlength="40" placeholder="np. 6MT"></label>
+<label>Napęd<input id="v-drive" maxlength="40" placeholder="np. przód"></label>
+<label>Nadwozie<input id="v-body" maxlength="60" placeholder="np. minibus"></label>
+<label>Kolor<input id="v-color" maxlength="60" placeholder="np. star silver"></label>
+<label>Kierownica<input id="v-steering" maxlength="60" placeholder="np. po prawej stronie"></label>
+<label>Przebieg (km)<input id="v-mileage" type="number" min="0" step="1" placeholder="np. 159480"></label>
+<label class="full">Uwagi<textarea id="v-notes" rows="3" maxlength="2000" placeholder="Dodatkowe informacje"></textarea></label>
+<div class="full form-actions">
+<button class="admin-button" type="submit" id="save-vehicle">Zapisz rozbieralnię</button>
+<button class="admin-button secondary" type="button" id="cancel-vehicle-edit" hidden>Anuluj edycję</button>
+</div>
+</form>
+<p id="vehicle-form-message" class="form-message" role="status"></p>
+</section>
 
-      <section class="admin-panel">
-        <h2 id="form-title">Dodaj część</h2>
-        <p class="muted">Pola oznaczone * są wymagane.</p>
+<section class="admin-panel">
+<div class="inventory-heading">
+<h2>Lista rozbieralni <span id="vehicle-total" class="total-pill">0</span></h2>
+<input id="vehicle-search" type="search" placeholder="Szukaj numeru, marki lub modelu…">
+</div>
+<div class="table-scroll">
+<table>
+<thead><tr><th>Numer</th><th>Marka / Model</th><th>Rok</th><th>VIN</th><th>Akcje</th></tr></thead>
+<tbody id="vehicles-body"></tbody>
+</table>
+</div>
+<p id="vehicles-message" class="form-message" role="status"></p>
+</section>
+</section>
 
-        <form id="product-form" class="form-grid">
-          <input type="hidden" id="product-id">
+<section id="panel-product" class="admin-tab-panel" hidden>
+<section class="admin-panel">
+<h2 id="product-form-title">Dodaj część</h2>
+<p class="muted">Wpisz numer rozbieralni, aby automatycznie uzupełnić dane samochodu dawcy.</p>
+<form id="product-form" class="form-grid">
+<input type="hidden" id="product-id">
+<label class="full">Numer rozbieralni *
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<input id="p-vehicle-number" required maxlength="40" placeholder="np. N3596" style="flex:1;min-width:180px">
+<button type="button" class="admin-button secondary" id="load-vehicle">Wczytaj dane auta</button>
+</div>
+<span class="help">Wpisz numer i kliknij „Wczytaj dane auta”.</span>
+</label>
+<div class="full"><div id="vehicle-info-box" class="vehicle-info-box" hidden></div></div>
+<label>Nazwa części *<input id="p-name" required maxlength="160" placeholder="np. Skrzynia biegów"></label>
+<label>Kategoria *<input id="p-category" required maxlength="80" placeholder="np. Skrzynie biegów"></label>
+<label>Numer OEM<input id="p-oem" maxlength="120" placeholder="Numer katalogowy"></label>
+<label>Stan<input id="p-condition" maxlength="80" placeholder="np. używana, po regeneracji"></label>
+<label>Cena (PLN) *<input id="p-price" required type="number" min="0" step="0.01" placeholder="250.00"></label>
+<label>Status
+<select id="p-status">
+<option value="available">Dostępna</option>
+<option value="reserved">Zarezerwowana</option>
+<option value="sold">Sprzedana</option>
+<option value="hidden">Ukryta</option>
+</select>
+</label>
+<label class="full">Opis<textarea id="p-description" rows="4" maxlength="4000" placeholder="Stan części, uwagi, dodatkowe informacje"></textarea></label>
+<label class="full">Zdjęcia (do 20)
+<input id="p-images" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+<span class="help">Możesz wybrać kilka zdjęć naraz. Zostaną automatycznie zmniejszone.</span>
+</label>
+<div class="full">
+<strong style="color:#fff">Zdjęcia zapisane dla tej części</strong>
+<div id="product-images" class="thumb-list"></div>
+</div>
+<div class="full form-actions">
+<button class="admin-button" type="submit" id="save-product">Zapisz część</button>
+<button class="admin-button secondary" type="button" id="cancel-product-edit" hidden>Anuluj edycję</button>
+</div>
+</form>
+<p id="product-form-message" class="form-message" role="status"></p>
+</section>
+</section>
 
-          <label>
-            Nazwa części *
-            <input id="p-name" required maxlength="140"
-              placeholder="np. Skrzynia biegów">
-          </label>
+<section id="panel-list" class="admin-tab-panel" hidden>
+<section class="admin-panel">
+<div class="inventory-heading">
+<h2>Asortyment <span id="product-total" class="total-pill">0</span></h2>
+<input id="product-search" type="search" placeholder="Szukaj nazwy, OEM, numeru rozbieralni…">
+</div>
+<div class="table-scroll">
+<table>
+<thead><tr><th>Zdjęcie</th><th>Część</th><th>Rozbieralnia</th><th>OEM</th><th>Cena</th><th>Status</th><th>Akcje</th></tr></thead>
+<tbody id="products-body"></tbody>
+</table>
+</div>
+<p id="products-message" class="form-message" role="status"></p>
+</section>
+</section>
 
-          <label>
-            Kategoria *
-            <input id="p-category" required maxlength="100"
-              placeholder="np. Skrzynie biegów">
-          </label>
-
-          <label>
-            Marka samochodu
-            <input id="p-make" maxlength="80" placeholder="np. Opel">
-          </label>
-
-          <label>
-            Model samochodu
-            <input id="p-model" maxlength="100" placeholder="np. Corsa">
-          </label>
-
-          <label>
-            Rok / zakres lat
-            <input id="p-years" maxlength="60" placeholder="np. 2009">
-          </label>
-
-          <label>
-            Numer OEM
-            <input id="p-oem" maxlength="120" placeholder="Numer katalogowy">
-          </label>
-
-          <label>
-            Cena (PLN) *
-            <input id="p-price" required type="number"
-              min="0" step="0.01" placeholder="250.00">
-          </label>
-
-          <label>
-            Status
-            <select id="p-status">
-              <option value="available">Dostępna</option>
-              <option value="reserved">Zarezerwowana</option>
-              <option value="sold">Sprzedana</option>
-            </select>
-          </label>
-
-          <label>
-            Rozbieralnia / samochód dawca
-            <select id="p-vehicle">
-              <option value="">Bez przypisania</option>
-            </select>
-          </label>
-
-          <label>
-            Numer rozbieralni (jeśli dotyczy)
-            <input id="p-dismantling-number" maxlength="100"
-              placeholder="np. N3185">
-          </label>
-
-          <label class="full">
-            Opis
-            <textarea id="p-description" rows="4" maxlength="4000"
-              placeholder="Stan części, uwagi i dodatkowe informacje"></textarea>
-          </label>
-
-          <label class="full">
-            Zdjęcie części
-            <input id="p-image" type="file"
-              accept="image/jpeg,image/png,image/webp">
-            <span class="muted">JPG, PNG lub WebP. Maksymalny rozmiar 5 MB.</span>
-          </label>
-
-          <div class="full">
-            <strong>Zdjęcie zapisane dla tej części</strong>
-            <div id="current-images" class="image-preview-list"></div>
-          </div>
-
-          <div class="full form-actions">
-            <button id="save-product" class="admin-button" type="submit">
-              Zapisz część
-            </button>
-            <button id="cancel-edit" class="admin-button secondary"
-              type="button" hidden>Anuluj edycję</button>
-          </div>
-        </form>
-        <p id="form-message" class="form-message" role="status"></p>
-      </section>
-
-      <section class="admin-panel">
-        <div class="inventory-heading">
-          <h2>Lista części <span id="admin-total" class="total-pill">0</span></h2>
-          <input id="admin-search" type="search"
-            placeholder="Szukaj nazwy, OEM, marki…"
-            aria-label="Szukaj części">
-        </div>
-
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Część</th>
-                <th>Samochód</th>
-                <th>OEM</th>
-                <th>Cena</th>
-                <th>Status</th>
-                <th>Akcje</th>
-              </tr>
-            </thead>
-            <tbody id="inventory-body"></tbody>
-          </table>
-        </div>
-        <p id="inventory-message" class="form-message" role="status"></p>
-      </section>
-    </section>
-
-    <section id="panel-vehicles" class="admin-tab-panel"
-      role="tabpanel" aria-labelledby="tab-vehicles" hidden>
-
-      <section class="admin-panel">
-        <h2 id="vehicle-form-title">Dodaj rozbieralnię / samochód dawcę</h2>
-        <p class="muted">Podaj numer rozbieralni i dane samochodu.</p>
-
-        <form id="vehicle-form" class="form-grid">
-          <input type="hidden" id="vehicle-id">
-
-          <label>
-            Numer rozbieralni *
-            <input id="v-dismantling-number" required maxlength="100"
-              placeholder="np. N3185">
-          </label>
-
-          <label>
-            Marka *
-            <input id="v-make" required maxlength="80"
-              placeholder="np. Mercedes Benz">
-          </label>
-
-          <label>
-            Model *
-            <input id="v-model" required maxlength="120"
-              placeholder="np. Klasa S W221">
-          </label>
-
-          <label>
-            Rok
-            <input id="v-years" maxlength="60" placeholder="np. 2006">
-          </label>
-
-          <label>
-            Numer VIN
-            <input id="v-vin" maxlength="80" placeholder="VIN (opcjonalnie)">
-          </label>
-
-          <label>
-            Dodatkowy opis
-            <input id="v-description" maxlength="500"
-              placeholder="np. silnik, wersja, uwagi">
-          </label>
-
-          <div class="full form-actions">
-            <button id="save-vehicle" class="admin-button" type="submit">
-              Zapisz rozbieralnię
-            </button>
-            <button id="cancel-vehicle-edit" class="admin-button secondary"
-              type="button" hidden>Anuluj edycję</button>
-          </div>
-        </form>
-        <p id="vehicle-form-message" class="form-message" role="status"></p>
-      </section>
-
-      <section class="admin-panel">
-        <div class="inventory-heading">
-          <h2>Lista rozbieralni <span id="vehicle-total" class="total-pill">0</span></h2>
-          <input id="vehicle-search" type="search"
-            placeholder="Szukaj numeru, marki lub modelu…"
-            aria-label="Szukaj rozbieralni">
-        </div>
-
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Numer</th>
-                <th>Marka</th>
-                <th>Model</th>
-                <th>Rok</th>
-                <th>Akcje</th>
-              </tr>
-            </thead>
-            <tbody id="vehicles-body"></tbody>
-          </table>
-        </div>
-        <p id="vehicles-message" class="form-message" role="status"></p>
-      </section>
-    </section>
-  </section>
+</section>
 </main>
 
-<footer class="admin-footer">
-  TRIPL PARTS · USED AUTO PARTS
-</footer>
+<footer class="admin-footer">TRIPL PARTS · USED AUTO PARTS</footer>
 
 </body>
 </html>
