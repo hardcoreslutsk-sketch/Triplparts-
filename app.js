@@ -14,7 +14,7 @@
 
   let products = [];
   let vehicles = [];
-  let imagesByProduct = {};   // product_id -> [urls]
+  let imagesByProduct = {};
 
   function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({
@@ -180,12 +180,12 @@
 
     renderGallery();
     $('product-modal').hidden = false;
-    document.body.style.overflow = 'hidden';
+    document.body.classList.add('modal-open');
   }
 
   function closeModal() {
     $('product-modal').hidden = true;
-    document.body.style.overflow = '';
+    document.body.classList.remove('modal-open');
   }
 
   function renderGallery() {
