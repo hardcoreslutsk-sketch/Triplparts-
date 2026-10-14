@@ -19,6 +19,89 @@
     }[c]));
   }
 
+  // ===== Уведомления =====
+  async function sendEmailNotification(order, items) {
+    if (!cfg.WEB3FORMS_KEY) {
+      console.warn('Web3Forms: brak klucza, pomijam email.');
+      return;
+    }
+
+    const total = items.reduce((s, it) => s + Number(it.price) * Number(it.qty), 0);
+    const itemsText = items.map(it =>
+      `${it.qty}× ${it.name}${it.sku ? ' (#' + it.sku + ')' : ''} — ${(Number(it.price) * Number(it.qty)).toFixed(2)} zł`
+    ).join('\n');
+
+    const message =
+      `NOWE ZAMÓWIENIE\n\n` +
+      `Klient: ${order.customer_name}\n` +
+      `Telefon: ${order.customer_phone || '—'}\n` +
+      `E-mail: ${order.customer_email || '—'}\n` +
+      `Adres: ${order.customer_address}\n` +
+      `Uwagi: ${order.notes || '—'}\n\n` +
+      `Zamówione części:\n${itemsText}\n\n` +
+      `Suma: ${total.toFixed(2)} zł`;
+
+    try {
+      const res = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          access_key: cfg.WEB3FORMS_KEY,
+          subject: 'Nowe zamówienie — ' + order.customer_name,
+          from_name: 'TRIPL PARTS',
+          name: order.customer_name,
+          email: order.customer_email || cfg.EMAIL || '',
+          phone: order.customer_phone || '',
+          message: message
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      console.log('Web3Forms:', data);
+    } catch (e) {
+      console.warn('Web3Forms notification failed:', e);
+    }
+  }
+
+  async function sendWhatsAppNotification(order, items) {
+    if (!cfg.CALLMEBOT_KEY) {
+      console.warn('CallMeBot: brak klucza, pomijam WhatsApp.');
+      return;
+    }
+    const phone = (cfg.WHATSAPP_NUMBER || '').replace(/\D/g,'');
+    if (!phone) return;
+
+    const total = items.reduce((s, it) => s + Number(it.price) * Number(it.qty), 0);
+    const itemsText = items.map(it =>
+      `${it.qty}x ${it.name} — ${(Number(it.price) * Number(it.qty)).toFixed(2)} zl`
+    ).join(', ');
+
+    const text =
+      `NOWE ZAMOWIENIE\n` +
+      `Klient: ${order.customer_name}\n` +
+      `Tel: ${order.customer_phone || '-'}\n` +
+      `Email: ${order.customer_email || '-'}\n` +
+      `Adres: ${order.customer_address}\n` +
+      `Czesci: ${itemsText}\n` +
+      `Suma: ${total.toFixed(2)} zl`;
+
+    const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(text)}&apikey=${cfg.CALLMEBOT_KEY}`;
+
+    try {
+      console.log('CallMeBot URL:', url);
+      await fetch(url, { mode: 'no-cors' });
+    } catch (e) {
+      console.warn('CallMeBot notification failed:', e);
+    }
+  }
+
+  async function sendNotifications(order, items) {
+    await Promise.allSettled([
+      sendEmailNotification(order, items),
+      sendWhatsAppNotification(order, items)
+    ]);
+  }
+
+  // ===== Корзина =====
   function renderCart() {
     const items = window.TPCart ? window.TPCart.read() : [];
     const emptyEl = $('checkout-empty');
@@ -42,7 +125,7 @@
       row.innerHTML = `
         ${it.image
           ? `<img src="${esc(it.image)}" alt="" class="checkout-thumb">`
-          : '<div class="checkout-thumb checkout-thumb-empty"></div>'}
+          : '<div class="checkout-thumb checkout-thumb-empty">—</div>'}
         <div class="checkout-item-info">
           <b>${esc(it.name)}</b>
           ${it.sku ? `<small>Art.: ${esc(it.sku)}</small>` : ''}
@@ -62,7 +145,6 @@
     $('checkout-total').textContent = money(window.TPCart ? window.TPCart.total() : 0);
   }
 
-  // Click delegation for cart controls
   document.addEventListener('click', e => {
     const inc = e.target.closest('[data-inc]')?.dataset.inc;
     const dec = e.target.closest('[data-dec]')?.dataset.dec;
@@ -108,7 +190,7 @@
     });
   }
 
-  // ===== SUBMIT =====
+  // ===== Отправка заказа =====
   const form = $('order-form');
   if (form) {
     form.addEventListener('submit', async e => {
@@ -162,6 +244,9 @@
         const { data, error } = await client.from('orders').insert(payload).select('id').single();
         if (error) throw error;
 
+        // Отправляем уведомления (не блокируем клиента)
+        sendNotifications(payload, payload.items);
+
         window.TPCart.clear();
 
         $('checkout-content').hidden = true;
@@ -179,7 +264,7 @@
     });
   }
 
-  // ===== THEME TOGGLE =====
+  // ===== Тема =====
   const themeToggle = document.getElementById('theme-toggle');
   if (themeToggle) {
     themeToggle.addEventListener('click', () => {
