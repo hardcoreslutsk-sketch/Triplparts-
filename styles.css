@@ -493,3 +493,20 @@ img{display:block;max-width:100%}
   .cart-link,.theme-toggle{width:40px;height:40px;font-size:15px}
   .switcher-btn{padding:7px 10px;font-size:10px}
 }
+/* ===== FIX: переключатели языка/валюты на мобильном ===== */
+@media (max-width: 620px){
+  /* Сдвигаем группу переключателей к правому краю — тогда меню
+     открывается влево и не выходит за пределы экрана */
+  .header-switchers{
+    margin-left:auto;
+  }
+  /* Немного уменьшаем и страхуем от переполнения */
+  .switcher-menu{
+    min-width:150px;
+    max-width:calc(100vw - 32px);
+  }
+  .switcher-menu button{
+    padding:9px 12px;
+    font-size:12px;
+  }
+}
