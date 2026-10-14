@@ -15,11 +15,11 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="styles.css?v=6">
+<link rel="stylesheet" href="styles.css?v=8">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="cart.js?v=1"></script>
-<script defer src="app.js?v=6"></script>
+<script src="cart.js?v=3"></script>
+<script defer src="app.js?v=8"></script>
 </head>
 <body>
 
@@ -41,10 +41,9 @@
 </svg>
 <span id="cart-count" class="cart-count" hidden></span>
 </a>
-<button class="theme-toggle" id="theme-toggle" type="button"
-  aria-label="Przełącz motyw jasny / ciemny">
-  <span class="theme-icon-light" aria-hidden="true">☀</span>
-  <span class="theme-icon-dark" aria-hidden="true">☾</span>
+<button class="theme-toggle" id="theme-toggle" type="button" aria-label="Przełącz motyw jasny / ciemny">
+<span class="theme-icon-light" aria-hidden="true">☀</span>
+<span class="theme-icon-dark" aria-hidden="true">☾</span>
 </button>
 </nav>
 </div>
@@ -186,7 +185,7 @@
 </div>
 </div>
 
-<div id="toast" class="toast" hidden></div>
+<div id="toast-wrap" class="toast-wrap" aria-live="polite"></div>
 
 <script>
 document.getElementById("current-year").textContent = new Date().getFullYear();
