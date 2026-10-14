@@ -42,6 +42,19 @@
 
   const safe = s => String(s || '').replace(/\s+/g,' ').trim();
 
+  function showToast(text) {
+    const t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = text;
+    t.hidden = false;
+    t.classList.add('show');
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(() => {
+      t.classList.remove('show');
+      setTimeout(() => { t.hidden = true; }, 250);
+    }, 2200);
+  }
+
   function contactUrl(p, vehicle) {
     const number = (cfg.WHATSAPP_NUMBER || '').replace(/\D/g,'');
     const lines = [
@@ -118,8 +131,15 @@
       el.querySelector('.product-oem').textContent = p.oem ? 'OEM: ' + p.oem : '';
       el.querySelector('.product-price').textContent = money(p.price_pln);
 
-      const btn = el.querySelector('.product-contact');
-      btn.addEventListener('click', e => { e.stopPropagation(); openModal(p); });
+      const buyBtn = el.querySelector('.product-buy');
+      buyBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        addToCart(p, imgs[0] || '');
+      });
+
+      const contactBtn = el.querySelector('.product-contact');
+      contactBtn.addEventListener('click', e => { e.stopPropagation(); openModal(p); });
+
       card.addEventListener('click', () => openModal(p));
       card.addEventListener('keydown', e => { if (e.key === 'Enter') openModal(p); });
 
@@ -130,11 +150,25 @@
     $('empty-state').hidden = list.length !== 0;
   }
 
+  function addToCart(p, imageUrl) {
+    if (!window.TPCart) return;
+    window.TPCart.add({
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      price_pln: p.price_pln,
+      image: imageUrl || ''
+    });
+    showToast('Dodano do koszyka: ' + (p.name || ''));
+  }
+
   // ===== MODAL =====
   let modalImages = [];
   let modalIndex = 0;
+  let modalProduct = null;
 
   function openModal(p) {
+    modalProduct = p;
     const v = vehicles.find(x => x.id === p.vehicle_id);
     const imgs = imagesByProduct[p.id] || [];
     modalImages = imgs.length ? imgs : [placeholder];
@@ -215,6 +249,13 @@
   $('modal-next').addEventListener('click', () => {
     modalIndex = (modalIndex + 1) % modalImages.length;
     renderGallery();
+  });
+
+  $('modal-buy').addEventListener('click', () => {
+    if (!modalProduct) return;
+    const img = modalImages[0] && modalImages[0] !== placeholder ? modalImages[0] : '';
+    addToCart(modalProduct, img);
+    closeModal();
   });
 
   document.querySelectorAll('[data-close-modal]').forEach(el =>
