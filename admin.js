@@ -317,16 +317,14 @@
       .filter(p => {
         const v = vehicles.find(x => x.id === p.vehicle_id);
 
-        // Фильтр по артикулу (если введено что-то в отдельном поле)
         if (qSku) {
           const sku = String(p.sku || '').toLowerCase();
           if (!sku.includes(qSku)) return false;
         }
 
-        // Общий поиск
         if (q) {
           const hay = [
-            p.name, p.category, p.oem, p.description, p.condition, p.sku,
+            p.name, p.category, p.oem, p.license_number, p.description, p.condition, p.sku,
             v?.dismantling_number, v?.make, v?.model, v?.years, v?.vin,
             v?.engine_volume, v?.engine_code, v?.gearbox, v?.drive
           ].map(x => String(x || '').toLowerCase());
@@ -337,7 +335,6 @@
       })
       .forEach(p => {
         const v = vehicles.find(x => x.id === p.vehicle_id);
-        const vLabel = v ? `${v.dismantling_number} — ${v.make} ${v.model}` : '—';
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><div class="table-thumb" data-thumb="${esc(p.id)}"></div></td>
@@ -345,6 +342,7 @@
           <td><b>${esc(p.name)}</b><br><small style="color:#888">${esc(p.category)}</small></td>
           <td><b>${esc(v ? v.dismantling_number : '—')}</b><br><small style="color:#888">${esc(v ? (v.make + ' ' + v.model) : '')}</small></td>
           <td>${esc(p.oem || '—')}</td>
+          <td>${esc(p.license_number || '—')}</td>
           <td><b>${money(p.price_pln)}</b></td>
           <td><span class="total-pill" style="background:#1a1a1a">${statusText(p.status)}</span></td>
           <td>
@@ -360,7 +358,7 @@
         loadThumbForProduct(p.id);
       });
     if (!body.children.length) {
-      body.innerHTML = '<tr><td colspan="8">Brak części.</td></tr>';
+      body.innerHTML = '<tr><td colspan="9">Brak części.</td></tr>';
     }
   }
 
@@ -502,6 +500,7 @@
         name: $('p-name').value.trim(),
         category: $('p-category').value.trim(),
         oem: $('p-oem').value.trim() || null,
+        license_number: $('p-license').value.trim() || null,
         condition: $('p-condition').value.trim() || null,
         price_pln: Number($('p-price').value),
         status: statusClass($('p-status').value),
@@ -577,6 +576,8 @@
       $('product-id').value = p.id;
       $('p-vehicle-number').value = v ? v.dismantling_number : '';
       $('p-sku').value = p.sku || '';
+      $('p-license').value = p.license_number || '';
+
       if (v) {
         $('vehicle-info-box').hidden = false;
         $('vehicle-info-box').innerHTML = `
