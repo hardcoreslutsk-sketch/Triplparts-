@@ -114,7 +114,6 @@
     if (!p) return;
     const lang = currentLang();
 
-    // Переводим название / категорию / описание
     let trName = p.name, trCat = p.category, trDesc = p.description;
     if (lang !== 'pl' && window.TPTranslate) {
       try {
@@ -184,8 +183,12 @@
     if (!currentProduct || !window.TPCart) return;
     const img = images[0] === placeholder ? '' : images[0];
     window.TPCart.add({
-      id: currentProduct.id, sku: currentProduct.sku, name: currentProduct.name,
-      price_pln: currentProduct.price_pln, image: img
+      id: currentProduct.id,
+      sku: currentProduct.sku,
+      name: currentProduct.name,
+      price_pln: currentProduct.price_pln,
+      price_eur: currentProduct.price_eur,
+      image: img
     });
     showToast(T('product.added'), currentProduct.name, img);
   });
