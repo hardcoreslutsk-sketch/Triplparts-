@@ -203,6 +203,7 @@ img{max-width:100%;display:block}
 </label>
 <label>Kategoria *<input id="p-category" required maxlength="80" placeholder="np. Skrzynie biegów"></label>
 <label>Numer OEM<input id="p-oem" maxlength="120" placeholder="Numer katalogowy producenta"></label>
+<label>Numer licencyjny<input id="p-license" maxlength="120" placeholder="Numer licencyjny"></label>
 <label>Stan<input id="p-condition" maxlength="80" placeholder="np. używana, po regeneracji"></label>
 <label>Cena (PLN) *<input id="p-price" required type="number" min="0" step="0.01" placeholder="250.00"></label>
 <label>Status
@@ -237,12 +238,12 @@ img{max-width:100%;display:block}
 <h2>Asortyment <span id="product-total" class="total-pill">0</span></h2>
 <div class="inventory-search">
 <input id="sku-search" type="search" placeholder="Szukaj po artykule…" autocomplete="off">
-<input id="product-search" type="search" placeholder="Szukaj nazwy, OEM, rozbieralni…" autocomplete="off">
+<input id="product-search" type="search" placeholder="Szukaj nazwy, OEM, licencji, rozbieralni…" autocomplete="off">
 </div>
 </div>
 <div class="table-scroll">
 <table>
-<thead><tr><th>Zdjęcie</th><th>Artykuł</th><th>Część</th><th>Rozbieralnia</th><th>OEM</th><th>Cena</th><th>Status</th><th>Akcje</th></tr></thead>
+<thead><tr><th>Zdjęcie</th><th>Artykuł</th><th>Część</th><th>Rozbieralnia</th><th>OEM</th><th>Liczencja</th><th>Cena</th><th>Status</th><th>Akcje</th></tr></thead>
 <tbody id="products-body"></tbody>
 </table>
 </div>
