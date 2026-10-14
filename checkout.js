@@ -39,7 +39,8 @@
       `Adres: ${order.customer_address}\n` +
       `Uwagi: ${order.notes || '—'}\n\n` +
       `Zamówione części:\n${itemsText}\n\n` +
-      `Suma: ${total.toFixed(2)} zł`;
+      `Wartość części: ${total.toFixed(2)} zł\n` +
+      `Dostawa: DO USTALENIA (skontaktuj się z klientem)`;
 
     try {
       const res = await fetch('https://api.web3forms.com/submit', {
@@ -82,7 +83,8 @@
       `Email: ${order.customer_email || '-'}\n` +
       `Adres: ${order.customer_address}\n` +
       `Czesci: ${itemsText}\n` +
-      `Suma: ${total.toFixed(2)} zl`;
+      `Wartosc czesci: ${total.toFixed(2)} zl\n` +
+      `Dostawa: DO USTALENIA`;
 
     const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(text)}&apikey=${cfg.CALLMEBOT_KEY}`;
 
@@ -244,7 +246,6 @@
         const { data, error } = await client.from('orders').insert(payload).select('id').single();
         if (error) throw error;
 
-        // Отправляем уведомления (не блокируем клиента)
         sendNotifications(payload, payload.items);
 
         window.TPCart.clear();
