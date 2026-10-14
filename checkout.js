@@ -105,7 +105,6 @@
     });
   }
 
-  // Чекбокс "Создать аккаунт"
   const regCheck = $('o-create-account');
   const pwdBlock = $('password-block');
   if (regCheck && pwdBlock) {
@@ -114,7 +113,6 @@
     });
   }
 
-  // Мгновенное подтверждение заказа через Edge Function
   async function notifyOrder(orderId) {
     if (!cfg.ORDER_EMAIL_FUNCTION_URL) return;
     try {
@@ -157,32 +155,24 @@
       btn.disabled = true; const prev = btn.textContent; btn.textContent = T('checkout.sending');
 
       try {
-        // 1) Опциональная регистрация
         let accountInfo = '';
         if (wantAccount) {
           btn.textContent = T('checkout.creatingAccount') || 'Tworzenie konta…';
-          let { data: si, error: siErr } =
-            await client.auth.signInWithPassword({ email, password });
+          let { error: siErr } = await client.auth.signInWithPassword({ email, password });
           if (siErr) {
             const su = await client.auth.signUp({ email, password });
             if (su.error && /already registered/i.test(su.error.message)) {
-              accountInfo = T('checkout.accExistsWrongPass') ||
-                'Konto z tym e-mailem już istnieje. Zaloguj się w „Moje zamówienia”.';
+              accountInfo = T('checkout.accExistsWrongPass') || 'Konto z tym e-mailem już istnieje, ale hasło jest nieprawidłowe. Zamówienie zostało zapisane bez logowania.';
             } else if (su.error) {
               accountInfo = (T('checkout.regError') || 'Nie udało się utworzyć konta: ') + su.error.message;
             } else if (!su.data.session) {
-              accountInfo = T('checkout.accNeedConfirm') ||
-                'Konto utworzone. Potwierdź e-mail, aby zobaczyć zamówienia.';
+              accountInfo = T('checkout.accNeedConfirm') || 'Konto utworzone. Potwierdź e-mail, aby zobaczyć zamówienia.';
             }
           }
         }
 
-        // 2) Создание заказа (цены считает сервер)
         btn.textContent = T('checkout.sending');
-        const itemsPayload = items.map(it => ({
-          id: it.id,
-          qty: Number(it.qty) || 1
-        }));
+        const itemsPayload = items.map(it => ({ id: it.id, qty: Number(it.qty) || 1 }));
 
         const { data: orderId, error: orderErr } = await client.rpc('create_order', {
           p_customer_name: name,
@@ -194,10 +184,8 @@
         });
         if (orderErr) throw orderErr;
 
-        // 3) Уведомления (email + WhatsApp) через Edge Function
         notifyOrder(orderId);
 
-        // 4) Успех
         window.TPCart.clear();
         $('checkout-content').hidden = true;
         $('checkout-empty').hidden = true;
@@ -218,9 +206,9 @@
   if (themeToggle) {
     themeToggle.addEventListener('click', () => {
       const root = document.documentElement;
-      const isLight = root.getAttribute('data-theme') === 'light';
-      if (isLight) { root.removeAttribute('data-theme'); try{localStorage.setItem('tp-theme','dark');}catch(e){} }
-      else { root.setAttribute('data-theme','light'); try{localStorage.setItem('tp-theme','light');}catch(e){} }
+      const isDark = root.getAttribute('data-theme') === 'dark';
+      if (isDark) { root.removeAttribute('data-theme'); try{localStorage.setItem('tp-theme','light');}catch(e){} }
+      else { root.setAttribute('data-theme','dark'); try{localStorage.setItem('tp-theme','dark');}catch(e){} }
     });
   }
 
