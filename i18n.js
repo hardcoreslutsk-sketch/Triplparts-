@@ -2,7 +2,7 @@ window.TPi18n = (() => {
   const dict = {
     pl: {
       "nav.catalog":"Katalog","nav.contact":"Kontakt","nav.admin":"Panel administratora","nav.cart":"Koszyk",
-      "hero.eyebrow":"UŻYWANE CZĘŚCI • Z ANGLII","hero.title1":"Części samochodowe.","hero.title2":"Sprawdzone i gotowe.","hero.text":"Używałe części z rozbieranych samochodów. Wyszukaj po marce, modelu, numerze OEM lub numerze rozbieralni.","hero.btn":"Przeglądaj katalog",
+      "hero.eyebrow":"UŻYWANE CZĘŚCI • Z ANGLII","hero.title1":"Części samochodowe.","hero.title2":"Sprawdzone i gotowe.","hero.text":"Używane części z rozbieranych samochodów. Wyszukaj po marce, modelu, numerze OEM lub numerze rozbieralni.","hero.btn":"Przeglądaj katalog",
       "catalog.eyebrow":"NASZA OFERTA","catalog.title":"Katalog części","catalog.sub":"Znajdź część dopasowaną do swojego samochodu.","catalog.count":"DOSTĘPNE CZĘŚCI","catalog.search":"Wyszukiwanie","catalog.searchPh":"Nazwa, OEM, numer rozbieralni…","catalog.make":"Marka","catalog.category":"Kategoria","catalog.allMakes":"Wszystkie marki","catalog.allCategories":"Wszystkie kategorie","catalog.sort":"Sortowanie","catalog.sortNew":"Najnowsze","catalog.sortPriceAsc":"Cena: od najniższej","catalog.sortPriceDesc":"Cena: od najwyższej","catalog.empty":"Nie znaleziono części","catalog.emptyHint":"Spróbuj zmienić wyszukiwanie lub wybrać inną kategorię.","catalog.loading":"Ładowanie katalogu…","catalog.empty2":"Katalog jest jeszcze pusty.",
       "card.buy":"Kup","card.ask":"Zapytaj","card.oem":"OEM",
       "status.available":"Dostępna","status.reserved":"Zarezerwowana","status.sold":"Sprzedana","status.hidden":"Ukryta",
@@ -96,6 +96,11 @@ window.TPi18n = (() => {
     return new Intl.NumberFormat('pl-PL', { style:'currency', currency:'PLN', maximumFractionDigits:2 }).format(n);
   }
 
+  function closeAllMenus() {
+    document.querySelectorAll('[data-switcher-menu]').forEach(m => { m.hidden = true; });
+    document.querySelectorAll('[data-switcher-toggle]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  }
+
   function applyTranslations() {
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.dataset.i18n;
@@ -107,45 +112,40 @@ window.TPi18n = (() => {
       const text = t(key);
       if (text) el.placeholder = text;
     });
-    // Обновляем метку языка на кнопке
+    // Обновляем метку активного языка на кнопке dropdown
     document.querySelectorAll('[data-current-lang]').forEach(el => {
       el.textContent = LANG_LABELS[lang] || lang.toUpperCase();
     });
-    // Обновляем метку валюты
+    // Обновляем метку активной валюты на кнопке dropdown
     document.querySelectorAll('[data-current-currency]').forEach(el => {
       el.textContent = currency;
     });
-    // Активный пункт в меню языков
+    // Активный пункт в выпадающем меню языков
     document.querySelectorAll('[data-lang-btn]').forEach(el => {
       el.classList.toggle('active', el.dataset.langBtn === lang);
     });
-    // Активный пункт в меню валют
+    // Активный пункт в выпадающем меню валют
     document.querySelectorAll('[data-currency-btn]').forEach(el => {
       el.classList.toggle('active', el.dataset.currencyBtn === currency);
     });
   }
 
-  function closeAllMenus() {
-    document.querySelectorAll('[data-switcher-menu]').forEach(m => { m.hidden = true; });
-    document.querySelectorAll('[data-switcher-toggle]').forEach(b => b.setAttribute('aria-expanded', 'false'));
-  }
-
   function bindSwitchers() {
-    // Кнопки языка в меню
+    // Клик по пункту языка → смена языка + закрыть меню
     document.querySelectorAll('[data-lang-btn]').forEach(el => {
       el.addEventListener('click', () => {
         setLang(el.dataset.langBtn);
         closeAllMenus();
       });
     });
-    // Кнопки валюты в меню
+    // Клик по пункту валюты → смена валюты + закрыть меню
     document.querySelectorAll('[data-currency-btn]').forEach(el => {
       el.addEventListener('click', () => {
         setCurrency(el.dataset.currencyBtn);
         closeAllMenus();
       });
     });
-    // Кнопки-переключатели (открывают меню)
+    // Клик по кнопке-переключателю → открыть/закрыть выпадающее меню
     document.querySelectorAll('[data-switcher-toggle]').forEach(el => {
       el.addEventListener('click', e => {
         e.stopPropagation();
@@ -160,7 +160,7 @@ window.TPi18n = (() => {
         }
       });
     });
-    // Клик вне меню закрывает
+    // Клик вне меню и Esc закрывают всё
     document.addEventListener('click', closeAllMenus);
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') closeAllMenus();
