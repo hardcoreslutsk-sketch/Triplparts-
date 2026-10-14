@@ -1,15 +1,9 @@
 window.TPTranslate = (() => {
   const cfg = window.APP_CONFIG || {};
-  const CACHE_KEY = 'tp-tr-cache-v3';
-  const ENDPOINT = 'https://api-free.deepl.com/v2/translate';
+  const CACHE_KEY = 'tp-tr-cache-v4';
 
-  // Список CORS-прокси — пробуем по очереди, пока один не сработает
-  const PROXIES = [
-    url => 'https://corsproxy.io/?url=' + encodeURIComponent(url),
-    url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
-    url => 'https://thingproxy.freeboard.io/fetch/' + url,
-    url => 'https://cors-anywhere.herokuapp.com/' + url
-  ];
+  // URL Supabase Edge Function, которая проксирует DeepL
+  const FUNCTION_URL = 'https://izndgthdwnxjltpcsyuu.supabase.co/functions/v1/smart-endpoint';
 
   const TARGET = { en: 'EN-US', pt: 'PT-PT' };
 
@@ -32,25 +26,9 @@ window.TPTranslate = (() => {
 
   let lastError = null;
 
-  async function fetchWithProxies(targetUrl, options) {
-    let lastErr = null;
-    for (let i = 0; i < PROXIES.length; i++) {
-      const proxied = PROXIES[i](targetUrl);
-      try {
-        const res = await fetch(proxied, options);
-        if (res.ok) return res;
-        lastErr = 'proxy ' + i + ' → HTTP ' + res.status;
-      } catch (e) {
-        lastErr = 'proxy ' + i + ' → ' + (e.message || 'failed');
-      }
-    }
-    throw new Error('All proxies failed: ' + lastErr);
-  }
-
   async function translateMany(texts, lang) {
     lastError = null;
     if (lang === 'pl' || !TARGET[lang]) return {};
-    if (!cfg.DEEPL_KEY) { lastError = 'Brak klucza DeepL'; return {}; }
 
     const uniq = [...new Set((texts || []).filter(t => typeof t === 'string' && t.trim().length > 0))];
     const result = {};
@@ -62,36 +40,33 @@ window.TPTranslate = (() => {
     });
     if (!missing.length) return result;
 
+    // Функция принимает до 40 текстов за раз
     const batches = [];
     for (let i = 0; i < missing.length; i += 40) batches.push(missing.slice(i, i + 40));
 
     for (const batch of batches) {
       try {
-        const body = new URLSearchParams();
-        body.append('source_lang', 'PL');
-        body.append('target_lang', TARGET[lang]);
-        batch.forEach(t => body.append('text', t));
-
-        const res = await fetchWithProxies(ENDPOINT, {
+        const res = await fetch(FUNCTION_URL, {
           method: 'POST',
-          headers: {
-            'Authorization': 'DeepL-Auth-Key ' + cfg.DEEPL_KEY,
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: body.toString()
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            texts: batch,
+            source_lang: 'PL',
+            target_lang: TARGET[lang]
+          })
         });
 
         if (!res.ok) {
           const txt = await res.text().catch(() => '');
-          lastError = 'DeepL HTTP ' + res.status + ' — ' + txt.slice(0, 120);
+          lastError = 'Function HTTP ' + res.status + ' — ' + txt.slice(0, 150);
           batch.forEach(t => { result[t] = t; });
           continue;
         }
 
         const data = await res.json();
-        const trans = data.translations || [];
+        const translations = data.translations || [];
         batch.forEach((t, i) => {
-          const tr = (trans[i] && trans[i].text) ? trans[i].text : t;
+          const tr = translations[i] || t;
           result[t] = tr;
           store(lang, t, tr);
         });
