@@ -9,19 +9,18 @@
 <script>
 (function(){
   try{
-    if (localStorage.getItem('tp-theme') === 'light') {
-      document.documentElement.setAttribute('data-theme','light');
-    }
+    if (localStorage.getItem('tp-theme') === 'light') document.documentElement.setAttribute('data-theme','light');
     var l = localStorage.getItem('tp-lang'); if (l) document.documentElement.setAttribute('lang', l);
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="styles.css?v=15">
+<link rel="stylesheet" href="styles.css?v=16">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="i18n.js?v=1"></script>
-<script src="cart.js?v=8"></script>
-<script defer src="app.js?v=15"></script>
+<script src="i18n.js?v=2"></script>
+<script src="translator.js?v=1"></script>
+<script src="cart.js?v=9"></script>
+<script defer src="app.js?v=16"></script>
 </head>
 <body>
 
