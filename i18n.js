@@ -2,7 +2,7 @@ window.TPi18n = (() => {
   const dict = {
     pl: {
       "nav.catalog":"Katalog","nav.contact":"Kontakt","nav.admin":"Panel administratora","nav.cart":"Koszyk",
-      "hero.eyebrow":"UŻYWANE CZĘŚCI • Z ANGLII","hero.title1":"Części samochodowe.","hero.title2":"Sprawdzone i gotowe.","hero.text":"Używane części z rozbieranych samochodów. Wyszukaj po marce, modelu, numerze OEM lub numerze rozbieralni.","hero.btn":"Przeglądaj katalog",
+      "hero.eyebrow":"UŻYWANE CZĘŚCI • Z ANGLII","hero.title1":"Części samochodowe.","hero.title2":"Sprawdzone i gotowe.","hero.text":"Używałe części z rozbieranych samochodów. Wyszukaj po marce, modelu, numerze OEM lub numerze rozbieralni.","hero.btn":"Przeglądaj katalog",
       "catalog.eyebrow":"NASZA OFERTA","catalog.title":"Katalog części","catalog.sub":"Znajdź część dopasowaną do swojego samochodu.","catalog.count":"DOSTĘPNE CZĘŚCI","catalog.search":"Wyszukiwanie","catalog.searchPh":"Nazwa, OEM, numer rozbieralni…","catalog.make":"Marka","catalog.category":"Kategoria","catalog.allMakes":"Wszystkie marki","catalog.allCategories":"Wszystkie kategorie","catalog.sort":"Sortowanie","catalog.sortNew":"Najnowsze","catalog.sortPriceAsc":"Cena: od najniższej","catalog.sortPriceDesc":"Cena: od najwyższej","catalog.empty":"Nie znaleziono części","catalog.emptyHint":"Spróbuj zmienić wyszukiwanie lub wybrać inną kategorię.","catalog.loading":"Ładowanie katalogu…","catalog.empty2":"Katalog jest jeszcze pusty.",
       "card.buy":"Kup","card.ask":"Zapytaj","card.oem":"OEM",
       "status.available":"Dostępna","status.reserved":"Zarezerwowana","status.sold":"Sprzedana","status.hidden":"Ukryta",
@@ -43,6 +43,7 @@ window.TPi18n = (() => {
 
   const STORAGE_LANG = 'tp-lang';
   const STORAGE_CURRENCY = 'tp-currency';
+  const LANG_LABELS = { pl: 'PL', en: 'EN', pt: 'PT' };
 
   let lang = 'pl';
   try { lang = localStorage.getItem(STORAGE_LANG) || 'pl'; } catch(e){}
@@ -71,7 +72,7 @@ window.TPi18n = (() => {
     if (!['PLN','EUR'].includes(c)) return;
     currency = c;
     try { localStorage.setItem(STORAGE_CURRENCY, c); } catch(e){}
-    applyTranslations();   // ← ФИКС: обновляем подсветку кнопок
+    applyTranslations();
     window.dispatchEvent(new CustomEvent('tp-currency-changed', { detail: { currency: c } }));
   }
 
@@ -79,7 +80,6 @@ window.TPi18n = (() => {
     if (!product) return '—';
     if (currency === 'EUR') {
       const v = product.price_eur;
-      // ← ФИКС: null / undefined / пусто → «—», а не «0,00 €»
       if (v === null || v === undefined || v === '' || isNaN(Number(v))) return '—';
       return new Intl.NumberFormat('pt-PT', { style:'currency', currency:'EUR', maximumFractionDigits:2 }).format(Number(v));
     }
@@ -107,23 +107,63 @@ window.TPi18n = (() => {
       const text = t(key);
       if (text) el.placeholder = text;
     });
-    // ← ФИКС: сначала удаляем active у ВСЕХ, потом ставим на нужную — так не бывает «двойной подсветки»
-    document.querySelectorAll('[data-lang-btn]').forEach(el => {
-      el.classList.remove('active');
-      if (el.dataset.langBtn === lang) el.classList.add('active');
+    // Обновляем метку языка на кнопке
+    document.querySelectorAll('[data-current-lang]').forEach(el => {
+      el.textContent = LANG_LABELS[lang] || lang.toUpperCase();
     });
+    // Обновляем метку валюты
+    document.querySelectorAll('[data-current-currency]').forEach(el => {
+      el.textContent = currency;
+    });
+    // Активный пункт в меню языков
+    document.querySelectorAll('[data-lang-btn]').forEach(el => {
+      el.classList.toggle('active', el.dataset.langBtn === lang);
+    });
+    // Активный пункт в меню валют
     document.querySelectorAll('[data-currency-btn]').forEach(el => {
-      el.classList.remove('active');
-      if (el.dataset.currencyBtn === currency) el.classList.add('active');
+      el.classList.toggle('active', el.dataset.currencyBtn === currency);
     });
   }
 
+  function closeAllMenus() {
+    document.querySelectorAll('[data-switcher-menu]').forEach(m => { m.hidden = true; });
+    document.querySelectorAll('[data-switcher-toggle]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  }
+
   function bindSwitchers() {
+    // Кнопки языка в меню
     document.querySelectorAll('[data-lang-btn]').forEach(el => {
-      el.addEventListener('click', () => setLang(el.dataset.langBtn));
+      el.addEventListener('click', () => {
+        setLang(el.dataset.langBtn);
+        closeAllMenus();
+      });
     });
+    // Кнопки валюты в меню
     document.querySelectorAll('[data-currency-btn]').forEach(el => {
-      el.addEventListener('click', () => setCurrency(el.dataset.currencyBtn));
+      el.addEventListener('click', () => {
+        setCurrency(el.dataset.currencyBtn);
+        closeAllMenus();
+      });
+    });
+    // Кнопки-переключатели (открывают меню)
+    document.querySelectorAll('[data-switcher-toggle]').forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        const type = el.dataset.switcherToggle;
+        const menu = document.querySelector('[data-switcher-menu="' + type + '"]');
+        if (!menu) return;
+        const isOpen = !menu.hidden;
+        closeAllMenus();
+        if (!isOpen) {
+          menu.hidden = false;
+          el.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
+    // Клик вне меню закрывает
+    document.addEventListener('click', closeAllMenus);
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeAllMenus();
     });
   }
 
@@ -133,5 +173,5 @@ window.TPi18n = (() => {
     applyTranslations();
   });
 
-  return { t, setLang, getLang, setCurrency, getCurrency, formatProductPrice, formatAmount, applyTranslations };
+  return { t, setLang, getLang, setCurrency, getCurrency, formatProductPrice, formatAmount, applyTranslations, closeAllMenus };
 })();
