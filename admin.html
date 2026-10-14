@@ -53,7 +53,7 @@ img{max-width:100%;display:block}
 .notice{margin-top:14px;padding:13px 15px;border-radius:8px;background:#2a2210;color:#ffd98a;border:1px solid #4a3a10}
 .total-pill{display:inline-block;padding:3px 10px;border-radius:20px;background:#242424;color:#ff8c1a;font-size:13px;font-weight:800}
 .table-scroll{width:100%;overflow-x:auto;margin-top:16px}
-.table-scroll table{width:100%;border-collapse:collapse;min-width:900px}
+.table-scroll table{width:100%;border-collapse:collapse;min-width:1000px}
 .table-scroll th,.table-scroll td{padding:12px 10px;border-bottom:1px solid #262626;text-align:left;vertical-align:top;color:#e6e6e6}
 .table-scroll th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#888;font-weight:700}
 .table-scroll td{font-size:14px}
@@ -291,6 +291,10 @@ Zamówienia <span id="orders-badge" class="tab-badge" hidden>0</span>
 <label>Numer licencyjny<input id="p-license" maxlength="120" placeholder="Numer licencyjny"></label>
 <label>Stan<input id="p-condition" maxlength="80" placeholder="np. używana, po regeneracji"></label>
 <label>Cena (PLN) *<input id="p-price" required type="number" min="0" step="0.01" placeholder="250.00"></label>
+<label>Cena (EUR)
+<input id="p-price-eur" type="number" min="0" step="0.01" placeholder="np. 58.00">
+<span class="help">Wpisz ręcznie. Puste = nie pokazuj ceny EUR dla tego produktu.</span>
+</label>
 <label>Status
 <select id="p-status">
 <option value="available">Dostępna</option>
@@ -329,7 +333,7 @@ Zamówienia <span id="orders-badge" class="tab-badge" hidden>0</span>
 </div>
 <div class="table-scroll">
 <table>
-<thead><tr><th>Zdjęcie</th><th>Artykuł</th><th>Część</th><th>Rozbieralnia</th><th>OEM</th><th>Licencja</th><th>Cena</th><th>Status</th><th>Akcje</th></tr></thead>
+<thead><tr><th>Zdjęcie</th><th>Artykuł</th><th>Część</th><th>Rozbieralnia</th><th>OEM</th><th>Licencja</th><th>Cena PLN</th><th>Cena EUR</th><th>Status</th><th>Akcje</th></tr></thead>
 <tbody id="products-body"></tbody>
 </table>
 </div>
