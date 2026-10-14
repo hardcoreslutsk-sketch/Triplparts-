@@ -47,7 +47,9 @@
     const lines = [
       'Dzień dobry, proszę o informację o dostępności części:',
       safe(p.name),
+      p.sku ? '| Artykuł: ' + safe(p.sku) : '',
       p.oem ? '| OEM: ' + safe(p.oem) : '',
+      p.license_number ? '| Nr licencyjny: ' + safe(p.license_number) : '',
       p.price_pln != null ? '| Cena: ' + money(p.price_pln) : '',
       vehicle ? '| Auto: ' + safe([vehicle.make, vehicle.model, vehicle.years].filter(Boolean).join(' ')) : '',
       vehicle && vehicle.dismantling_number ? '| Nr rozbieralni: ' + safe(vehicle.dismantling_number) : ''
@@ -87,7 +89,7 @@
       if (cat && p.category !== cat) return false;
       if (term) {
         const hay = [
-          p.name, p.category, p.oem, p.description,
+          p.name, p.category, p.oem, p.license_number, p.sku, p.description,
           v?.make, v?.model, v?.years, v?.dismantling_number, v?.vin
         ].map(x => String(x||'').toLowerCase());
         if (!hay.some(h => h.includes(term))) return false;
@@ -144,8 +146,10 @@
     $('modal-desc').textContent = p.description || '';
 
     const partInfo = [
+      ['Artykuł', p.sku],
       ['Stan', p.condition],
       ['Numer OEM', p.oem],
+      ['Numer licencyjny', p.license_number],
       ['Status', statusText(p.status)]
     ];
     $('modal-part-info').innerHTML = partInfo.filter(([,v]) => v)
@@ -176,7 +180,7 @@
     $('modal-phone').href = phone ? 'tel:' + phone : '#';
 
     $('modal-email').href = 'mailto:' + (cfg.EMAIL || '') +
-      '?subject=' + encodeURIComponent('Zapytanie o: ' + p.name);
+      '?subject=' + encodeURIComponent('Zapytanie o: ' + (p.name || 'część'));
 
     renderGallery();
     $('product-modal').hidden = false;
