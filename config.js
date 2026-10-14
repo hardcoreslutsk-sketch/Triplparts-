@@ -4,5 +4,11 @@ window.APP_CONFIG = Object.freeze({
   WHATSAPP_NUMBER: "48726579717",
   PHONE_NUMBER: "+48 726 579 717",
   BUSINESS_NAME: "TRIPL PARTS",
-  EMAIL: "triplparts@gmail.com"
+  EMAIL: "triplparts@gmail.com",
+
+  // Web3Forms — уведомления на почту
+  WEB3FORMS_KEY: "0f36b711-cee4-49c7-af5b-a5a5f43134ff",
+
+  // CallMeBot — уведомления в WhatsApp
+  CALLMEBOT_KEY: "5455277"
 });
