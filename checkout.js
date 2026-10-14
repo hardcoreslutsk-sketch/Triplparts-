@@ -11,9 +11,25 @@
     ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
     : null;
 
-  function fmt(n) {
-    if (i18n) return i18n.formatAmount(n);
-    return new Intl.NumberFormat('pl-PL',{style:'currency',currency:'PLN'}).format(Number(n)||0);
+  function curCurrency() { return i18n ? i18n.getCurrency() : 'PLN'; }
+
+  function fmtPln(n) {
+    return new Intl.NumberFormat('pl-PL', { style:'currency', currency:'PLN', maximumFractionDigits:2 }).format(Number(n)||0);
+  }
+  function fmtEur(n) {
+    return new Intl.NumberFormat('pt-PT', { style:'currency', currency:'EUR', maximumFractionDigits:2 }).format(Number(n)||0);
+  }
+  function fmtCurrency(n) {
+    if (curCurrency() === 'EUR') return fmtEur(n);
+    return fmtPln(n);
+  }
+  function itemPrice(it) {
+    if (curCurrency() === 'EUR') {
+      const v = it.price_eur;
+      if (v === null || v === undefined || v === '' || isNaN(Number(v))) return '—';
+      return fmtEur(v);
+    }
+    return fmtPln(it.price_pln);
   }
 
   function esc(s) {
@@ -22,11 +38,12 @@
     }[c]));
   }
 
+  // ===== Уведомления =====
   async function sendEmailNotification(order, items) {
     if (!cfg.WEB3FORMS_KEY) return;
-    const total = items.reduce((s, it) => s + Number(it.price) * Number(it.qty), 0);
+    const total = items.reduce((s, it) => s + Number(it.price_pln) * Number(it.qty), 0);
     const itemsText = items.map(it =>
-      `${it.qty}× ${it.name}${it.sku ? ' (#' + it.sku + ')' : ''} — ${(Number(it.price) * Number(it.qty)).toFixed(2)} zł`
+      `${it.qty}× ${it.name}${it.sku ? ' (#' + it.sku + ')' : ''} — ${(Number(it.price_pln) * Number(it.qty)).toFixed(2)} zł`
     ).join('\n');
     const message =
       `NOWE ZAMÓWIENIE\n\n` +
@@ -59,8 +76,8 @@
     if (!cfg.CALLMEBOT_KEY) return;
     const phone = (cfg.WHATSAPP_NUMBER || '').replace(/\D/g,'');
     if (!phone) return;
-    const total = items.reduce((s, it) => s + Number(it.price) * Number(it.qty), 0);
-    const itemsText = items.map(it => `${it.qty}x ${it.name} — ${(Number(it.price) * Number(it.qty)).toFixed(2)} zl`).join(', ');
+    const total = items.reduce((s, it) => s + Number(it.price_pln) * Number(it.qty), 0);
+    const itemsText = items.map(it => `${it.qty}x ${it.name} — ${(Number(it.price_pln) * Number(it.qty)).toFixed(2)} zl`).join(', ');
     const text = `NOWE ZAMOWIENIE\nKlient: ${order.customer_name}\nTel: ${order.customer_phone || '-'}\nEmail: ${order.customer_email || '-'}\nAdres: ${order.customer_address}\nCzesci: ${itemsText}\nWartosc czesci: ${total.toFixed(2)} zl\nDostawa: DO USTALENIA`;
     try {
       await fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(text)}&apikey=${cfg.CALLMEBOT_KEY}`, { mode: 'no-cors' });
@@ -87,7 +104,7 @@
         <div class="checkout-item-info">
           <b>${esc(it.name)}</b>
           ${it.sku ? `<small>Art.: ${esc(it.sku)}</small>` : ''}
-          <div class="checkout-item-price">${fmt(it.price)}</div>
+          <div class="checkout-item-price">${itemPrice(it)}</div>
         </div>
         <div class="checkout-item-qty">
           <button type="button" data-dec="${esc(it.id)}">−</button>
@@ -98,7 +115,7 @@
       list.appendChild(row);
     });
     $('checkout-count').textContent = String(window.TPCart ? window.TPCart.count() : 0);
-    $('checkout-total').textContent = fmt(window.TPCart ? window.TPCart.total() : 0);
+    $('checkout-total').textContent = fmtCurrency(window.TPCart ? window.TPCart.total(curCurrency()) : 0);
   }
 
   document.addEventListener('click', e => {
@@ -125,7 +142,7 @@
     const v = Math.max(1, Math.min(99, Number(e.target.value) || 1));
     window.TPCart.setQty(id, v);
     const tot = document.querySelector('#checkout-total');
-    if (tot) tot.textContent = fmt(window.TPCart.total());
+    if (tot) tot.textContent = fmtCurrency(window.TPCart.total(curCurrency()));
   });
 
   const clearBtn = $('clear-cart');
@@ -161,9 +178,12 @@
       try {
         const itemsPayload = items.map(it => ({
           id: it.id, sku: it.sku || '', name: it.name || '',
-          price: Number(it.price) || 0, qty: Number(it.qty) || 1
+          price: Number(it.price_pln) || 0,
+          price_pln: Number(it.price_pln) || 0,
+          price_eur: it.price_eur === null || it.price_eur === undefined ? null : Number(it.price_eur),
+          qty: Number(it.qty) || 1
         }));
-        const total = Number(window.TPCart.total().toFixed(2));
+        const totalPln = items.reduce((s, it) => s + (Number(it.price_pln) || 0) * (Number(it.qty) || 1), 0);
         const { data: newId, error } = await client.rpc('create_order', {
           p_customer_name: name,
           p_customer_phone: phone || null,
@@ -171,7 +191,7 @@
           p_customer_address: address,
           p_notes: notes || null,
           p_items: itemsPayload,
-          p_total_pln: total
+          p_total_pln: Number(totalPln.toFixed(2))
         });
         if (error) throw error;
         const orderForNotify = { customer_name: name, customer_phone: phone, customer_email: email, customer_address: address, notes };
