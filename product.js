@@ -27,12 +27,11 @@
     '<path d="M260 205l28-38h90l40 38"/></g></svg>'
   )}`;
 
+  function currentLang() { return i18n ? i18n.getLang() : 'pl'; }
   function statusText(s) {
     const map = {
-      available: T('status.available'),
-      reserved: T('status.reserved'),
-      sold: T('status.sold'),
-      hidden: T('status.hidden')
+      available: T('status.available'), reserved: T('status.reserved'),
+      sold: T('status.sold'), hidden: T('status.hidden')
     };
     return map[s] || T('status.available');
   }
@@ -110,22 +109,36 @@
                   : `https://wa.me/?text=${encodeURIComponent(msg)}`;
   }
 
-  function renderProduct() {
+  async function renderProduct() {
     const p = currentProduct, vehicle = currentVehicle;
     if (!p) return;
+    const lang = currentLang();
 
-    document.title = (p.name || 'Part') + ' — TRIPL PARTS';
+    // Переводим название / категорию / описание
+    let trName = p.name, trCat = p.category, trDesc = p.description;
+    if (lang !== 'pl' && window.TPTranslate) {
+      try {
+        const dict = await window.TPTranslate.translateMany(
+          [p.name, p.category, p.description].filter(Boolean), lang
+        );
+        trName = dict[p.name] || p.name;
+        trCat  = dict[p.category] || p.category;
+        trDesc = p.description ? (dict[p.description] || p.description) : '';
+      } catch (e) { console.warn('translate failed', e); }
+    }
+
+    document.title = (trName || 'Part') + ' — TRIPL PARTS';
 
     $('breadcrumb').hidden = false;
-    $('bc-category').textContent = p.category || '';
-    $('bc-name').textContent = p.name || '';
+    $('bc-category').textContent = trCat || '';
+    $('bc-name').textContent = trName || '';
 
-    $('p-category').textContent = p.category || '';
-    $('p-name').textContent = p.name || '';
+    $('p-category').textContent = trCat || '';
+    $('p-name').textContent = trName || '';
     $('p-price').textContent = i18n ? i18n.formatProductPrice(p) : (p.price_pln + ' PLN');
     $('p-status').textContent = statusText(p.status);
     $('p-status').className = 'stock-badge ' + (p.status || 'available');
-    $('p-desc').textContent = p.description || '';
+    $('p-desc').textContent = trDesc || '';
 
     const partInfo = [
       [T('product.article'), p.sku],
@@ -161,8 +174,8 @@
     const phone = (cfg.PHONE_NUMBER || '').replace(/[^+\d]/g,'');
     $('phone-btn').href = phone ? 'tel:' + phone : '#';
     $('email-btn').href = 'mailto:' + (cfg.EMAIL || '') +
-      '?subject=' + encodeURIComponent('Zapytanie: ' + (p.name || '')) +
-      '&body=' + encodeURIComponent('Hello,\n\n' + (p.name || '') + '\nLink: ' + window.location.href);
+      '?subject=' + encodeURIComponent('Zapytanie: ' + (trName || '')) +
+      '&body=' + encodeURIComponent('Hello,\n\n' + (trName || '') + '\nLink: ' + window.location.href);
 
     renderGallery();
   }
@@ -224,7 +237,7 @@
         const vRes = await client.from('vehicles').select('*').eq('id', currentProduct.vehicle_id).maybeSingle();
         currentVehicle = vRes.data || null;
       }
-      renderProduct();
+      await renderProduct();
       $('product-loading').hidden = true;
       $('product-content').hidden = false;
     } catch (e) { console.error(e); showNotFound(); }
