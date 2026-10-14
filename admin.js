@@ -13,12 +13,12 @@
 
   let vehicles = [];
   let products = [];
+  let orders = [];
   let currentProductImages = [];
   let loadedVehicle = null;
 
   const MAX_IMAGES = 20;
   const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
   const COMPRESS_MAX_SIDE = 1280;
   const COMPRESS_QUALITY = 0.75;
   const UPLOAD_CONCURRENCY = 3;
@@ -42,6 +42,19 @@
   function statusClass(s) {
     return ['available','reserved','sold','hidden'].includes(s) ? s : 'available';
   }
+  function orderStatusText(s) {
+    return ({new:'Nowe',contacted:'Skontaktowano',completed:'Zrealizowane',cancelled:'Anulowane'}[s] || 'Nowe');
+  }
+  function orderStatusClass(s) {
+    return ['new','contacted','completed','cancelled'].includes(s) ? s : 'new';
+  }
+  function formatDate(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString('pl-PL', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    } catch (e) { return iso; }
+  }
   function uuid() {
     if (window.crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -62,13 +75,10 @@
           const scale = Math.min(1, COMPRESS_MAX_SIDE / Math.max(width, height));
           const w = Math.max(1, Math.round(width * scale));
           const h = Math.max(1, Math.round(height * scale));
-
           const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
+          canvas.width = w; canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
-
           canvas.toBlob((blob) => {
             if (!blob) return resolve(file);
             const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
@@ -99,7 +109,6 @@
     const results = new Array(files.length);
     let done = 0;
     let cursor = 0;
-
     async function worker() {
       while (true) {
         const idx = cursor++;
@@ -126,11 +135,8 @@
         if (onProgress) onProgress(done, files.length);
       }
     }
-
     const workers = [];
-    for (let i = 0; i < Math.min(UPLOAD_CONCURRENCY, files.length); i++) {
-      workers.push(worker());
-    }
+    for (let i = 0; i < Math.min(UPLOAD_CONCURRENCY, files.length); i++) workers.push(worker());
     await Promise.all(workers);
     return results;
   }
@@ -138,7 +144,11 @@
   function showUser(user) {
     $('login-panel').hidden = !!user;
     $('dashboard').hidden = !user;
-    if (user) { refreshVehicles(); refreshProducts(); }
+    if (user) {
+      refreshOrders();
+      refreshVehicles();
+      refreshProducts();
+    }
   }
 
   $('login-form').addEventListener('submit', async e => {
@@ -158,9 +168,10 @@
   });
 
   const tabs = [
+    { tab: 'tab-orders',   panel: 'panel-orders' },
     { tab: 'tab-vehicles', panel: 'panel-vehicles' },
-    { tab: 'tab-product', panel: 'panel-product' },
-    { tab: 'tab-list', panel: 'panel-list' }
+    { tab: 'tab-product',  panel: 'panel-product' },
+    { tab: 'tab-list',     panel: 'panel-list' }
   ];
   tabs.forEach(t => {
     const btn = $(t.tab);
@@ -170,8 +181,186 @@
         $(x.tab).setAttribute('aria-selected', x.tab === t.tab ? 'true' : 'false');
         $(x.panel).hidden = x.panel !== t.panel;
       });
+      if (t.tab === 'tab-orders') refreshOrders();
     });
   });
+
+  // ===== ORDERS =====
+  async function refreshOrders() {
+    if (!client) {
+      msg('orders-message', 'Klient Supabase nie jest utworzony — sprawdź config.js.', 'error');
+      return;
+    }
+
+    msg('orders-message', 'Ładowanie zamówień…');
+
+    // Диагностика: сначала посмотрим сессию
+    const sessionRes = await client.auth.getSession();
+    const sessionEmail = sessionRes?.data?.session?.user?.email || '(brak)';
+    console.log('ADMIN session email:', sessionEmail);
+
+    const { data, error } = await client
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(5000);
+
+    if (error) {
+      msg('orders-message',
+        'Błąd pobierania: ' + error.message +
+        ' | Zalogowany jako: ' + sessionEmail, 'error');
+      console.error('orders select error:', error);
+      return;
+    }
+
+    orders = data || [];
+    $('orders-total').textContent = orders.length;
+    updateOrdersBadge();
+    renderOrders();
+
+    if (!orders.length) {
+      msg('orders-message',
+        'Baza zwróciła 0 zamówień. Zalogowany jako: ' + sessionEmail +
+        '. Jeśli w bazie są zamówienia — sprawdź politykę RLS (SELECT).', 'error');
+    } else {
+      msg('orders-message', 'Załadowano zamówień: ' + orders.length + '.', 'success');
+    }
+  }
+
+  function updateOrdersBadge() {
+    const badge = $('orders-badge');
+    if (!badge) return;
+    const newCount = orders.filter(o => o.status === 'new').length;
+    badge.textContent = String(newCount);
+    badge.hidden = newCount === 0;
+  }
+
+  function renderOrders() {
+    const filter = $('orders-status-filter').value;
+    const wrap = $('orders-list');
+    wrap.innerHTML = '';
+
+    const list = orders.filter(o => !filter || o.status === filter);
+
+    if (!list.length) {
+      wrap.innerHTML = '<div class="orders-empty"><h3>Brak zamówień</h3><p>Gdy klient złoży zamówienie, pojawi się tutaj.</p></div>';
+      return;
+    }
+
+    const waNumber = (cfg.WHATSAPP_NUMBER || '').replace(/\D/g,'');
+
+    list.forEach(o => {
+      const card = document.createElement('div');
+      card.className = 'order-card status-' + orderStatusClass(o.status);
+
+      const ref = String(o.id || '').slice(0, 8).toUpperCase();
+      const items = Array.isArray(o.items) ? o.items : [];
+
+      const itemsHtml = items.length
+        ? items.map(it => `
+            <div class="order-item">
+              <span class="qty">${esc(it.qty || 1)}×</span>
+              <span class="name">${esc(it.name || '—')}${it.sku ? ` <span class="sku">#${esc(it.sku)}</span>` : ''}</span>
+              <span class="price">${money(Number(it.price) * Number(it.qty || 1))}</span>
+            </div>`).join('')
+        : '<div class="order-item"><span class="name">— brak danych —</span></div>';
+
+      const customerPhoneDigits = String(o.customer_phone || '').replace(/\D/g,'');
+      const waHref = customerPhoneDigits
+        ? `https://wa.me/${customerPhoneDigits}`
+        : (waNumber ? `https://wa.me/${waNumber}` : '');
+
+      card.innerHTML = `
+        <div class="order-head">
+          <div>
+            <div class="order-ref">ZAMÓWIENIE #${esc(ref)}</div>
+            <div class="order-date">${esc(formatDate(o.created_at))}</div>
+          </div>
+          <span class="order-status ${orderStatusClass(o.status)}">${orderStatusText(o.status)}</span>
+        </div>
+
+        <div class="order-customer">
+          <div class="name">${esc(o.customer_name || '—')}</div>
+          ${o.customer_phone ? `<div class="contact-row"><span>Telefon</span><a href="tel:${esc(o.customer_phone.replace(/[^+\d]/g,''))}">${esc(o.customer_phone)}</a></div>` : ''}
+          ${o.customer_email ? `<div class="contact-row"><span>E-mail</span><a href="mailto:${esc(o.customer_email)}">${esc(o.customer_email)}</a></div>` : ''}
+        </div>
+
+        <div class="order-address"><b style="color:#888;font-size:11px;display:block;margin-bottom:4px;letter-spacing:.05em">ADRES DOSTAWY</b>${esc(o.customer_address || '—')}</div>
+
+        ${o.notes ? `<div class="order-notes"><b>Uwagi klienta</b>${esc(o.notes)}</div>` : ''}
+
+        <div class="order-items">${itemsHtml}</div>
+
+        <div class="order-total">
+          <span>Razem</span>
+          <b>${money(o.total_pln)}</b>
+        </div>
+
+        <div class="order-actions">
+          ${waHref ? `<a class="wa" href="${esc(waHref)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+          ${o.customer_phone ? `<a href="tel:${esc(o.customer_phone.replace(/[^+\d]/g,''))}">Zadzwoń</a>` : ''}
+          ${o.customer_email ? `<a href="mailto:${esc(o.customer_email)}">E-mail</a>` : ''}
+        </div>
+
+        <div class="order-actions">
+          <select class="order-status-select" data-ostatus="${esc(o.id)}">
+            <option value="new" ${o.status==='new'?'selected':''}>Nowe</option>
+            <option value="contacted" ${o.status==='contacted'?'selected':''}>Skontaktowano</option>
+            <option value="completed" ${o.status==='completed'?'selected':''}>Zrealizowane</option>
+            <option value="cancelled" ${o.status==='cancelled'?'selected':''}>Anulowane</option>
+          </select>
+          <button type="button" class="danger" data-odelete="${esc(o.id)}">Usuń</button>
+        </div>
+      `;
+      wrap.appendChild(card);
+    });
+  }
+
+  const statusFilterEl = $('orders-status-filter');
+  if (statusFilterEl) statusFilterEl.addEventListener('change', renderOrders);
+
+  const refreshBtn = $('orders-refresh');
+  if (refreshBtn) refreshBtn.addEventListener('click', refreshOrders);
+
+  const ordersListEl = $('orders-list');
+  if (ordersListEl) {
+    ordersListEl.addEventListener('change', async e => {
+      const id = e.target.closest('[data-ostatus]')?.dataset.ostatus;
+      if (!id) return;
+      const next = e.target.value;
+      const { error } = await client.from('orders').update({ status: next }).eq('id', id);
+      if (error) {
+        msg('orders-message', 'Nie udało się zmienić statusu: ' + error.message, 'error');
+        return;
+      }
+      const ord = orders.find(x => x.id === id);
+      if (ord) ord.status = next;
+      updateOrdersBadge();
+      const card = e.target.closest('.order-card');
+      if (card) card.className = 'order-card status-' + orderStatusClass(next);
+      const pill = card?.querySelector('.order-status');
+      if (pill) {
+        pill.className = 'order-status ' + orderStatusClass(next);
+        pill.textContent = orderStatusText(next);
+      }
+      msg('orders-message', 'Status zaktualizowany.', 'success');
+    });
+
+    ordersListEl.addEventListener('click', async e => {
+      const id = e.target.closest('[data-odelete]')?.dataset.odelete;
+      if (!id) return;
+      const o = orders.find(x => x.id === id);
+      if (!o) return;
+      if (!confirm(`Usunąć zamówienie od „${o.customer_name}”?`)) return;
+      const { error } = await client.from('orders').delete().eq('id', id);
+      if (error) {
+        msg('orders-message', 'Nie udało się usunąć: ' + error.message, 'error');
+        return;
+      }
+      msg('orders-message', 'Zamówienie usunięte.', 'success');
+      await refreshOrders();
+    });
+  }
 
   // ===== VEHICLES =====
   async function refreshVehicles() {
@@ -316,12 +505,10 @@
     products
       .filter(p => {
         const v = vehicles.find(x => x.id === p.vehicle_id);
-
         if (qSku) {
           const sku = String(p.sku || '').toLowerCase();
           if (!sku.includes(qSku)) return false;
         }
-
         if (q) {
           const hay = [
             p.name, p.category, p.oem, p.license_number, p.description, p.condition, p.sku,
@@ -330,7 +517,6 @@
           ].map(x => String(x || '').toLowerCase());
           if (!hay.some(h => h.includes(q))) return false;
         }
-
         return true;
       })
       .forEach(p => {
@@ -377,7 +563,6 @@
   $('product-search').addEventListener('input', renderProducts);
   $('sku-search').addEventListener('input', renderProducts);
 
-  // ===== AUTOFILL =====
   $('load-vehicle').addEventListener('click', async () => {
     const num = $('p-vehicle-number').value.trim();
     if (!num) { msg('product-form-message','Wpisz numer rozbieralni.','error'); return; }
@@ -401,7 +586,6 @@
     msg('product-form-message','');
   });
 
-  // ===== PRODUCT IMAGES =====
   function renderProductImages() {
     const wrap = $('product-images');
     wrap.innerHTML = '';
@@ -460,7 +644,6 @@
     }
   }
 
-  // ===== PRODUCT FORM =====
   function resetProductForm() {
     $('product-form').reset();
     $('product-id').value = '';
@@ -529,23 +712,17 @@
         const results = await uploadMany(toUpload, (done, total) => {
           btn.textContent = `Zdjęcia ${done}/${total}…`;
         });
-
         const inserts = [];
         results.forEach((r, i) => {
-          if (r && r.url) {
-            inserts.push({ product_id: productId, url: r.url, sort_order: existingCount + i });
-          }
+          if (r && r.url) inserts.push({ product_id: productId, url: r.url, sort_order: existingCount + i });
         });
-
         if (inserts.length) {
           const ins = await client.from('product_images').insert(inserts).select();
           if (!ins.error && ins.data) currentProductImages.push(...ins.data);
         }
-
         const failed = results.filter(r => r && r.error).length;
         if (failed) {
-          msg('product-form-message',
-            `Zapisano część. ${failed} zdjęć nie udało się wgrać.`, 'error');
+          msg('product-form-message', `Zapisano część. ${failed} zdjęć nie udało się wgrać.`, 'error');
         }
       }
 
@@ -560,7 +737,6 @@
     }
   });
 
-  // ===== PRODUCTS LIST ACTIONS =====
   $('products-body').addEventListener('click', async e => {
     const editId = e.target.closest('[data-pedit]')?.dataset.pedit;
     const delId  = e.target.closest('[data-pdelete]')?.dataset.pdelete;
@@ -615,7 +791,6 @@
     if (delId) {
       const p = products.find(x => x.id === delId);
       if (!p || !confirm(`Usunąć część „${p.name}”?`)) return;
-
       const { data: imgs } = await client.from('product_images').select('url').eq('product_id', p.id);
       const { error } = await client.from('products').delete().eq('id', delId);
       if (error) { msg('products-message','Błąd: '+error.message,'error'); return; }
@@ -639,6 +814,8 @@
     w.textContent = 'Konfiguracja nie jest gotowa. Uzupełnij config.js.';
     $('login-panel').hidden = false;
   } else {
-    client.auth.onAuthStateChange((_e, s) => showUser(s?.user || null));
+    client.auth.onAuthStateChange((_e, s) => {
+      showUser(s?.user || null);
+    });
   }
 })();
