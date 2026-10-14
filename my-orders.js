@@ -65,24 +65,36 @@
       const ref = String(o.id || '').slice(0,8).toUpperCase();
       const items = Array.isArray(o.items) ? o.items : [];
       const itemsHtml = items.map(it => `
-        <div class="order-item">
-          <span class="qty">${esc(it.qty || 1)}×</span>
-          <span class="name">${esc(it.name || '—')}${it.sku ? ` <span class="sku">#${esc(it.sku)}</span>` : ''}</span>
-          <span class="price">${moneyPLN(Number(it.price_pln) * Number(it.qty || 1))}</span>
-        </div>`).join('') || '<div class="order-item"><span class="name">—</span></div>';
+        <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--text);padding:4px 0;">
+          <span style="color:var(--accent-fg);font-weight:800;min-width:28px;">${esc(it.qty || 1)}×</span>
+          <span style="flex:1;overflow-wrap:anywhere;">${esc(it.name || '—')}${it.sku ? ` <span style="color:var(--muted);font-size:11px;font-family:monospace;">#${esc(it.sku)}</span>` : ''}</span>
+          <span style="font-weight:700;white-space:nowrap;">${moneyPLN(Number(it.price_pln) * Number(it.qty || 1))}</span>
+        </div>`).join('') || '<div style="color:var(--muted);font-size:13px;">—</div>';
+
+      const statusColors = {
+        new: 'background:#fef3c7;color:#92400e;',
+        contacted: 'background:#dbeafe;color:#1e40af;',
+        completed: 'background:#dcfce7;color:#166534;',
+        cancelled: 'background:#e5e7eb;color:#6b7280;'
+      };
+      const statusStyle = statusColors[o.status] || statusColors.new;
+
       const card = document.createElement('div');
-      card.className = 'order-card status-' + orderStatusClass(o.status);
+      card.style.cssText = 'padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;gap:10px;';
       card.innerHTML = `
-        <div class="order-head">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
           <div>
-            <div class="order-ref">ZAMÓWIENIE #${esc(ref)}</div>
-            <div class="order-date">${esc(formatDate(o.created_at))}</div>
+            <div style="font-family:monospace;font-size:12px;color:var(--muted);letter-spacing:.5px;">ZAMÓWIENIE #${esc(ref)}</div>
+            <div style="font-size:12px;color:var(--muted);">${esc(formatDate(o.created_at))}</div>
           </div>
-          <span class="order-status ${orderStatusClass(o.status)}">${orderStatusText(o.status)}</span>
+          <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;${statusStyle}">${orderStatusText(o.status)}</span>
         </div>
-        <div class="order-address"><b style="color:#888;font-size:11px;display:block;margin-bottom:4px;letter-spacing:.05em">ADRES DOSTAWY</b>${esc(o.customer_address || '—')}</div>
-        <div class="order-items">${itemsHtml}</div>
-        <div class="order-total"><span>Razem</span><b>${moneyPLN(o.total_pln)}</b></div>`;
+        <div style="font-size:13px;color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">${esc(o.customer_address || '—')}</div>
+        <div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">${itemsHtml}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border);">
+          <span style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Razem</span>
+          <b style="color:var(--accent-fg);font-size:20px;font-weight:900;">${moneyPLN(o.total_pln)}</b>
+        </div>`;
       list.appendChild(card);
     });
   }
@@ -111,9 +123,9 @@
   if (themeToggle) {
     themeToggle.addEventListener('click', () => {
       const root = document.documentElement;
-      const isLight = root.getAttribute('data-theme') === 'light';
-      if (isLight) { root.removeAttribute('data-theme'); try{localStorage.setItem('tp-theme','dark');}catch(e){} }
-      else { root.setAttribute('data-theme','light'); try{localStorage.setItem('tp-theme','light');}catch(e){} }
+      const isDark = root.getAttribute('data-theme') === 'dark';
+      if (isDark) { root.removeAttribute('data-theme'); try{localStorage.setItem('tp-theme','light');}catch(e){} }
+      else { root.setAttribute('data-theme','dark'); try{localStorage.setItem('tp-theme','dark');}catch(e){} }
     });
   }
 
