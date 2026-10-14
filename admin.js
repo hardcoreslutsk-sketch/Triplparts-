@@ -17,8 +17,11 @@
   let loadedVehicle = null;
 
   const MAX_IMAGES = 20;
-  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+  const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const COMPRESS_MAX_SIDE = 1280;
+  const COMPRESS_QUALITY = 0.75;
+  const UPLOAD_CONCURRENCY = 3;
 
   function msg(id, text, type = '') {
     const el = $(id); if (!el) return;
@@ -48,23 +51,36 @@
     });
   }
 
-  async function compressImage(file, maxSide = 1600, quality = 0.82) {
-    if (!file || !file.type.startsWith('image/')) return file;
-    try {
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
-      const w = Math.round(bitmap.width * scale);
-      const h = Math.round(bitmap.height * scale);
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(bitmap, 0, 0, w, h);
-      const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
-      if (!blob) return file;
-      return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
-    } catch (e) {
-      return file;
-    }
+  function compressImage(file) {
+    return new Promise((resolve) => {
+      if (!file || !file.type.startsWith('image/')) return resolve(file);
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          const scale = Math.min(1, COMPRESS_MAX_SIDE / Math.max(width, height));
+          const w = Math.max(1, Math.round(width * scale));
+          const h = Math.max(1, Math.round(height * scale));
+
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+
+          canvas.toBlob((blob) => {
+            if (!blob) return resolve(file);
+            const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+            resolve(new File([blob], newName, { type: 'image/jpeg' }));
+          }, 'image/jpeg', COMPRESS_QUALITY);
+        };
+        img.onerror = () => resolve(file);
+        img.src = reader.result;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
   }
 
   function extractStoragePath(url) {
@@ -77,6 +93,46 @@
     const path = extractStoragePath(url);
     if (!path) return;
     try { await client.storage.from('product-images').remove([path]); } catch (e) {}
+  }
+
+  async function uploadMany(files, onProgress) {
+    const results = new Array(files.length);
+    let done = 0;
+    let cursor = 0;
+
+    async function worker() {
+      while (true) {
+        const idx = cursor++;
+        if (idx >= files.length) return;
+        try {
+          const compressed = await compressImage(files[idx]);
+          if (compressed.size > MAX_IMAGE_BYTES) {
+            results[idx] = { error: 'Za duże zdjęcie.' };
+          } else {
+            const path = `${uuid()}.jpg`;
+            const up = await client.storage.from('product-images')
+              .upload(path, compressed, { upsert: false, contentType: 'image/jpeg' });
+            if (up.error) {
+              results[idx] = { error: up.error.message };
+            } else {
+              const { data: pub } = client.storage.from('product-images').getPublicUrl(path);
+              results[idx] = { url: pub.publicUrl };
+            }
+          }
+        } catch (e) {
+          results[idx] = { error: e.message || 'nieznany' };
+        }
+        done++;
+        if (onProgress) onProgress(done, files.length);
+      }
+    }
+
+    const workers = [];
+    for (let i = 0; i < Math.min(UPLOAD_CONCURRENCY, files.length); i++) {
+      workers.push(worker());
+    }
+    await Promise.all(workers);
+    return results;
   }
 
   function showUser(user) {
@@ -101,7 +157,6 @@
     showUser(null);
   });
 
-  // ===== Tabs =====
   const tabs = [
     { tab: 'tab-vehicles', panel: 'panel-vehicles' },
     { tab: 'tab-product', panel: 'panel-product' },
@@ -118,9 +173,7 @@
     });
   });
 
-  // ============================================================
   // ===== VEHICLES =====
-  // ============================================================
   async function refreshVehicles() {
     const { data, error } = await client.from('vehicles').select('*')
       .order('created_at', { ascending: false }).limit(5000);
@@ -244,9 +297,7 @@
     }
   });
 
-  // ============================================================
   // ===== PRODUCTS =====
-  // ============================================================
   async function refreshProducts() {
     const { data, error } = await client.from('products').select('*')
       .order('created_at',{ascending:false}).limit(5000);
@@ -257,20 +308,42 @@
   }
 
   function renderProducts() {
+    const qSku = $('sku-search').value.trim().toLowerCase();
     const q = $('product-search').value.trim().toLowerCase();
     const body = $('products-body');
     body.innerHTML = '';
+
     products
-      .filter(p => [p.name, p.category, p.oem, p.description]
-        .some(x => String(x||'').toLowerCase().includes(q)))
+      .filter(p => {
+        const v = vehicles.find(x => x.id === p.vehicle_id);
+
+        // Фильтр по артикулу (если введено что-то в отдельном поле)
+        if (qSku) {
+          const sku = String(p.sku || '').toLowerCase();
+          if (!sku.includes(qSku)) return false;
+        }
+
+        // Общий поиск
+        if (q) {
+          const hay = [
+            p.name, p.category, p.oem, p.description, p.condition, p.sku,
+            v?.dismantling_number, v?.make, v?.model, v?.years, v?.vin,
+            v?.engine_volume, v?.engine_code, v?.gearbox, v?.drive
+          ].map(x => String(x || '').toLowerCase());
+          if (!hay.some(h => h.includes(q))) return false;
+        }
+
+        return true;
+      })
       .forEach(p => {
         const v = vehicles.find(x => x.id === p.vehicle_id);
         const vLabel = v ? `${v.dismantling_number} — ${v.make} ${v.model}` : '—';
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><div class="table-thumb" data-thumb="${esc(p.id)}"></div></td>
+          <td><span class="sku-cell">${esc(p.sku || '—')}</span></td>
           <td><b>${esc(p.name)}</b><br><small style="color:#888">${esc(p.category)}</small></td>
-          <td>${esc(vLabel)}</td>
+          <td><b>${esc(v ? v.dismantling_number : '—')}</b><br><small style="color:#888">${esc(v ? (v.make + ' ' + v.model) : '')}</small></td>
           <td>${esc(p.oem || '—')}</td>
           <td><b>${money(p.price_pln)}</b></td>
           <td><span class="total-pill" style="background:#1a1a1a">${statusText(p.status)}</span></td>
@@ -287,7 +360,7 @@
         loadThumbForProduct(p.id);
       });
     if (!body.children.length) {
-      body.innerHTML = '<tr><td colspan="7">Brak części.</td></tr>';
+      body.innerHTML = '<tr><td colspan="8">Brak części.</td></tr>';
     }
   }
 
@@ -304,6 +377,7 @@
   }
 
   $('product-search').addEventListener('input', renderProducts);
+  $('sku-search').addEventListener('input', renderProducts);
 
   // ===== AUTOFILL =====
   $('load-vehicle').addEventListener('click', async () => {
@@ -409,11 +483,11 @@
     e.preventDefault();
     if (!client) return;
 
-    const btn = $('save-product'); btn.disabled = true;
+    const btn = $('save-product');
+    btn.disabled = true;
     msg('product-form-message','Zapisywanie…');
 
     try {
-      // Ensure vehicle
       const num = $('p-vehicle-number').value.trim();
       if (!num) throw new Error('Wpisz numer rozbieralni.');
       let v = loadedVehicle;
@@ -424,6 +498,7 @@
 
       const payload = {
         vehicle_id: v.id,
+        sku: $('p-sku').value.trim() || null,
         name: $('p-name').value.trim(),
         category: $('p-category').value.trim(),
         oem: $('p-oem').value.trim() || null,
@@ -445,29 +520,34 @@
         productId = res.data.id;
       }
 
-      // Upload new images
       const files = Array.from($('p-images').files || []);
       const existingCount = currentProductImages.length;
       const room = MAX_IMAGES - existingCount;
       const toUpload = files.slice(0, room);
 
-      for (let i = 0; i < toUpload.length; i++) {
-        const f = toUpload[i];
-        if (!ALLOWED_TYPES.includes(f.type)) continue;
-        if (f.size > MAX_IMAGE_BYTES) continue;
-        const compressed = await compressImage(f);
-        const path = `${uuid()}.jpg`;
-        const up = await client.storage.from('product-images').upload(path, compressed, {
-          upsert: false, contentType: 'image/jpeg'
+      if (toUpload.length) {
+        btn.textContent = 'Przygotowanie zdjęć…';
+        const results = await uploadMany(toUpload, (done, total) => {
+          btn.textContent = `Zdjęcia ${done}/${total}…`;
         });
-        if (up.error) continue;
-        const { data: pub } = client.storage.from('product-images').getPublicUrl(path);
-        const url = pub.publicUrl;
-        const order = existingCount + i;
-        const ins = await client.from('product_images').insert({
-          product_id: productId, url, sort_order: order
-        }).select().single();
-        if (!ins.error) currentProductImages.push(ins.data);
+
+        const inserts = [];
+        results.forEach((r, i) => {
+          if (r && r.url) {
+            inserts.push({ product_id: productId, url: r.url, sort_order: existingCount + i });
+          }
+        });
+
+        if (inserts.length) {
+          const ins = await client.from('product_images').insert(inserts).select();
+          if (!ins.error && ins.data) currentProductImages.push(...ins.data);
+        }
+
+        const failed = results.filter(r => r && r.error).length;
+        if (failed) {
+          msg('product-form-message',
+            `Zapisano część. ${failed} zdjęć nie udało się wgrać.`, 'error');
+        }
       }
 
       msg('product-form-message', id ? 'Zmiany zapisane.' : 'Część dodana.', 'success');
@@ -475,7 +555,10 @@
       await refreshProducts();
     } catch (err) {
       msg('product-form-message','Błąd: ' + (err.message || 'nieznany'),'error');
-    } finally { btn.disabled = false; }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Zapisz część';
+    }
   });
 
   // ===== PRODUCTS LIST ACTIONS =====
@@ -493,6 +576,7 @@
 
       $('product-id').value = p.id;
       $('p-vehicle-number').value = v ? v.dismantling_number : '';
+      $('p-sku').value = p.sku || '';
       if (v) {
         $('vehicle-info-box').hidden = false;
         $('vehicle-info-box').innerHTML = `
@@ -523,7 +607,6 @@
       $('save-product').textContent = 'Zapisz zmiany';
       $('cancel-product-edit').hidden = false;
 
-      // switch to product tab
       $('tab-product').click();
       window.scrollTo({top:0,behavior:'smooth'});
     }
