@@ -51,11 +51,12 @@ img{max-width:100%;display:block}
 .notice{margin-top:14px;padding:13px 15px;border-radius:8px;background:#2a2210;color:#ffd98a;border:1px solid #4a3a10}
 .total-pill{display:inline-block;padding:3px 10px;border-radius:20px;background:#242424;color:#d6ff3f;font-size:13px;font-weight:800}
 .table-scroll{width:100%;overflow-x:auto;margin-top:16px}
-.table-scroll table{width:100%;border-collapse:collapse;min-width:760px}
+.table-scroll table{width:100%;border-collapse:collapse;min-width:900px}
 .table-scroll th,.table-scroll td{padding:12px 10px;border-bottom:1px solid #262626;text-align:left;vertical-align:top;color:#e6e6e6}
 .table-scroll th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#888;font-weight:700}
 .table-scroll td{font-size:14px}
 .table-thumb{width:56px;height:56px;object-fit:cover;border-radius:6px;background:#222}
+.sku-cell{font-weight:800;color:#d6ff3f}
 .row-actions{display:flex;flex-wrap:wrap;gap:6px}
 .row-actions button{padding:7px 10px;border-radius:6px;border:1px solid #2c2c2c;background:#1a1a1a;color:#e6e6e6;cursor:pointer;font-weight:700;font-size:12px}
 .row-actions button:hover{border-color:#d6ff3f;color:#d6ff3f}
@@ -71,9 +72,9 @@ img{max-width:100%;display:block}
 .vehicle-info-box{background:#1a2418;border:1px solid #2c4028;border-radius:10px;padding:16px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 20px;font-size:13px;color:#e6e6e6}
 .vehicle-info-box b{display:block;font-size:11px;color:#7aa06a;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
 .vehicle-info-box span{color:#f0f0f0;word-break:break-word}
-.image-preview-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
-.image-preview-item img{width:120px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #2c2c2c}
 .admin-footer{padding:28px 16px;text-align:center;color:#666;background:#0e0e0e;border-top:1px solid #1e1e1e;font-size:12px}
+.inventory-search{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.inventory-search input{width:240px}
 @media (max-width:720px){
 .admin-main{width:calc(100% - 22px);margin-top:22px}
 .admin-panel{padding:16px}
@@ -81,6 +82,8 @@ img{max-width:100%;display:block}
 .full{grid-column:1}
 .admin-tab{flex:1;padding:11px 8px;font-size:13px}
 .vehicle-info-box{grid-template-columns:1fr 1fr}
+.inventory-search{width:100%}
+.inventory-search input{width:100%}
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -191,9 +194,15 @@ img{max-width:100%;display:block}
 <span class="help">Wpisz numer i kliknij „Wczytaj dane auta”.</span>
 </label>
 <div class="full"><div id="vehicle-info-box" class="vehicle-info-box" hidden></div></div>
-<label>Nazwa części *<input id="p-name" required maxlength="160" placeholder="np. Skrzynia biegów"></label>
+<label>Artykuł (SKU)
+<input id="p-sku" maxlength="60" placeholder="np. 123123">
+<span class="help">Twój wewnętrzny numer części.</span>
+</label>
+<label>Nazwa części *
+<input id="p-name" required maxlength="160" placeholder="np. Skrzynia biegów">
+</label>
 <label>Kategoria *<input id="p-category" required maxlength="80" placeholder="np. Skrzynie biegów"></label>
-<label>Numer OEM<input id="p-oem" maxlength="120" placeholder="Numer katalogowy"></label>
+<label>Numer OEM<input id="p-oem" maxlength="120" placeholder="Numer katalogowy producenta"></label>
 <label>Stan<input id="p-condition" maxlength="80" placeholder="np. używana, po regeneracji"></label>
 <label>Cena (PLN) *<input id="p-price" required type="number" min="0" step="0.01" placeholder="250.00"></label>
 <label>Status
@@ -226,11 +235,14 @@ img{max-width:100%;display:block}
 <section class="admin-panel">
 <div class="inventory-heading">
 <h2>Asortyment <span id="product-total" class="total-pill">0</span></h2>
-<input id="product-search" type="search" placeholder="Szukaj nazwy, OEM, numeru rozbieralni…">
+<div class="inventory-search">
+<input id="sku-search" type="search" placeholder="Szukaj po artykule…" autocomplete="off">
+<input id="product-search" type="search" placeholder="Szukaj nazwy, OEM, rozbieralni…" autocomplete="off">
+</div>
 </div>
 <div class="table-scroll">
 <table>
-<thead><tr><th>Zdjęcie</th><th>Część</th><th>Rozbieralnia</th><th>OEM</th><th>Cena</th><th>Status</th><th>Akcje</th></tr></thead>
+<thead><tr><th>Zdjęcie</th><th>Artykuł</th><th>Część</th><th>Rozbieralnia</th><th>OEM</th><th>Cena</th><th>Status</th><th>Akcje</th></tr></thead>
 <tbody id="products-body"></tbody>
 </table>
 </div>
