@@ -33,8 +33,12 @@
       '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
     }[c]));
   }
-  function money(n) {
+  function moneyPLN(n) {
     return new Intl.NumberFormat('pl-PL',{style:'currency',currency:'PLN'}).format(Number(n)||0);
+  }
+  function moneyEUR(n) {
+    if (n === null || n === undefined || n === '') return '—';
+    return new Intl.NumberFormat('pl-PL',{style:'currency',currency:'EUR'}).format(Number(n)||0);
   }
   function statusText(s) {
     return ({available:'Dostępna',reserved:'Zarezerwowana',sold:'Sprzedana',hidden:'Ukryta'}[s] || 'Dostępna');
@@ -187,44 +191,14 @@
 
   // ===== ORDERS =====
   async function refreshOrders() {
-    if (!client) {
-      msg('orders-message', 'Klient Supabase nie jest utworzony — sprawdź config.js.', 'error');
-      return;
-    }
-
-    msg('orders-message', 'Ładowanie zamówień…');
-
-    // Диагностика: сначала посмотрим сессию
-    const sessionRes = await client.auth.getSession();
-    const sessionEmail = sessionRes?.data?.session?.user?.email || '(brak)';
-    console.log('ADMIN session email:', sessionEmail);
-
-    const { data, error } = await client
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(5000);
-
-    if (error) {
-      msg('orders-message',
-        'Błąd pobierania: ' + error.message +
-        ' | Zalogowany jako: ' + sessionEmail, 'error');
-      console.error('orders select error:', error);
-      return;
-    }
-
+    if (!client) { msg('orders-message','Klient Supabase nie utworzony.','error'); return; }
+    const { data, error } = await client.from('orders').select('*')
+      .order('created_at', { ascending: false }).limit(5000);
+    if (error) { msg('orders-message','Błąd pobierania: ' + error.message, 'error'); return; }
     orders = data || [];
     $('orders-total').textContent = orders.length;
     updateOrdersBadge();
     renderOrders();
-
-    if (!orders.length) {
-      msg('orders-message',
-        'Baza zwróciła 0 zamówień. Zalogowany jako: ' + sessionEmail +
-        '. Jeśli w bazie są zamówienia — sprawdź politykę RLS (SELECT).', 'error');
-    } else {
-      msg('orders-message', 'Załadowano zamówień: ' + orders.length + '.', 'success');
-    }
   }
 
   function updateOrdersBadge() {
@@ -239,37 +213,27 @@
     const filter = $('orders-status-filter').value;
     const wrap = $('orders-list');
     wrap.innerHTML = '';
-
     const list = orders.filter(o => !filter || o.status === filter);
-
     if (!list.length) {
       wrap.innerHTML = '<div class="orders-empty"><h3>Brak zamówień</h3><p>Gdy klient złoży zamówienie, pojawi się tutaj.</p></div>';
       return;
     }
-
     const waNumber = (cfg.WHATSAPP_NUMBER || '').replace(/\D/g,'');
-
     list.forEach(o => {
       const card = document.createElement('div');
       card.className = 'order-card status-' + orderStatusClass(o.status);
-
       const ref = String(o.id || '').slice(0, 8).toUpperCase();
       const items = Array.isArray(o.items) ? o.items : [];
-
       const itemsHtml = items.length
         ? items.map(it => `
             <div class="order-item">
               <span class="qty">${esc(it.qty || 1)}×</span>
               <span class="name">${esc(it.name || '—')}${it.sku ? ` <span class="sku">#${esc(it.sku)}</span>` : ''}</span>
-              <span class="price">${money(Number(it.price) * Number(it.qty || 1))}</span>
+              <span class="price">${moneyPLN(Number(it.price) * Number(it.qty || 1))}</span>
             </div>`).join('')
         : '<div class="order-item"><span class="name">— brak danych —</span></div>';
-
       const customerPhoneDigits = String(o.customer_phone || '').replace(/\D/g,'');
-      const waHref = customerPhoneDigits
-        ? `https://wa.me/${customerPhoneDigits}`
-        : (waNumber ? `https://wa.me/${waNumber}` : '');
-
+      const waHref = customerPhoneDigits ? `https://wa.me/${customerPhoneDigits}` : (waNumber ? `https://wa.me/${waNumber}` : '');
       card.innerHTML = `
         <div class="order-head">
           <div>
@@ -278,30 +242,20 @@
           </div>
           <span class="order-status ${orderStatusClass(o.status)}">${orderStatusText(o.status)}</span>
         </div>
-
         <div class="order-customer">
           <div class="name">${esc(o.customer_name || '—')}</div>
           ${o.customer_phone ? `<div class="contact-row"><span>Telefon</span><a href="tel:${esc(o.customer_phone.replace(/[^+\d]/g,''))}">${esc(o.customer_phone)}</a></div>` : ''}
           ${o.customer_email ? `<div class="contact-row"><span>E-mail</span><a href="mailto:${esc(o.customer_email)}">${esc(o.customer_email)}</a></div>` : ''}
         </div>
-
         <div class="order-address"><b style="color:#888;font-size:11px;display:block;margin-bottom:4px;letter-spacing:.05em">ADRES DOSTAWY</b>${esc(o.customer_address || '—')}</div>
-
         ${o.notes ? `<div class="order-notes"><b>Uwagi klienta</b>${esc(o.notes)}</div>` : ''}
-
         <div class="order-items">${itemsHtml}</div>
-
-        <div class="order-total">
-          <span>Razem</span>
-          <b>${money(o.total_pln)}</b>
-        </div>
-
+        <div class="order-total"><span>Razem</span><b>${moneyPLN(o.total_pln)}</b></div>
         <div class="order-actions">
           ${waHref ? `<a class="wa" href="${esc(waHref)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
           ${o.customer_phone ? `<a href="tel:${esc(o.customer_phone.replace(/[^+\d]/g,''))}">Zadzwoń</a>` : ''}
           ${o.customer_email ? `<a href="mailto:${esc(o.customer_email)}">E-mail</a>` : ''}
         </div>
-
         <div class="order-actions">
           <select class="order-status-select" data-ostatus="${esc(o.id)}">
             <option value="new" ${o.status==='new'?'selected':''}>Nowe</option>
@@ -310,57 +264,44 @@
             <option value="cancelled" ${o.status==='cancelled'?'selected':''}>Anulowane</option>
           </select>
           <button type="button" class="danger" data-odelete="${esc(o.id)}">Usuń</button>
-        </div>
-      `;
+        </div>`;
       wrap.appendChild(card);
     });
   }
 
-  const statusFilterEl = $('orders-status-filter');
-  if (statusFilterEl) statusFilterEl.addEventListener('change', renderOrders);
+  $('orders-status-filter').addEventListener('change', renderOrders);
+  $('orders-refresh').addEventListener('click', refreshOrders);
 
-  const refreshBtn = $('orders-refresh');
-  if (refreshBtn) refreshBtn.addEventListener('click', refreshOrders);
+  $('orders-list').addEventListener('change', async e => {
+    const id = e.target.closest('[data-ostatus]')?.dataset.ostatus;
+    if (!id) return;
+    const next = e.target.value;
+    const { error } = await client.from('orders').update({ status: next }).eq('id', id);
+    if (error) { msg('orders-message','Nie udało się zmienić statusu: ' + error.message,'error'); return; }
+    const ord = orders.find(x => x.id === id);
+    if (ord) ord.status = next;
+    updateOrdersBadge();
+    const card = e.target.closest('.order-card');
+    if (card) card.className = 'order-card status-' + orderStatusClass(next);
+    const pill = card?.querySelector('.order-status');
+    if (pill) {
+      pill.className = 'order-status ' + orderStatusClass(next);
+      pill.textContent = orderStatusText(next);
+    }
+    msg('orders-message','Status zaktualizowany.','success');
+  });
 
-  const ordersListEl = $('orders-list');
-  if (ordersListEl) {
-    ordersListEl.addEventListener('change', async e => {
-      const id = e.target.closest('[data-ostatus]')?.dataset.ostatus;
-      if (!id) return;
-      const next = e.target.value;
-      const { error } = await client.from('orders').update({ status: next }).eq('id', id);
-      if (error) {
-        msg('orders-message', 'Nie udało się zmienić statusu: ' + error.message, 'error');
-        return;
-      }
-      const ord = orders.find(x => x.id === id);
-      if (ord) ord.status = next;
-      updateOrdersBadge();
-      const card = e.target.closest('.order-card');
-      if (card) card.className = 'order-card status-' + orderStatusClass(next);
-      const pill = card?.querySelector('.order-status');
-      if (pill) {
-        pill.className = 'order-status ' + orderStatusClass(next);
-        pill.textContent = orderStatusText(next);
-      }
-      msg('orders-message', 'Status zaktualizowany.', 'success');
-    });
-
-    ordersListEl.addEventListener('click', async e => {
-      const id = e.target.closest('[data-odelete]')?.dataset.odelete;
-      if (!id) return;
-      const o = orders.find(x => x.id === id);
-      if (!o) return;
-      if (!confirm(`Usunąć zamówienie od „${o.customer_name}”?`)) return;
-      const { error } = await client.from('orders').delete().eq('id', id);
-      if (error) {
-        msg('orders-message', 'Nie udało się usunąć: ' + error.message, 'error');
-        return;
-      }
-      msg('orders-message', 'Zamówienie usunięte.', 'success');
-      await refreshOrders();
-    });
-  }
+  $('orders-list').addEventListener('click', async e => {
+    const id = e.target.closest('[data-odelete]')?.dataset.odelete;
+    if (!id) return;
+    const o = orders.find(x => x.id === id);
+    if (!o) return;
+    if (!confirm(`Usunąć zamówienie od „${o.customer_name}”?`)) return;
+    const { error } = await client.from('orders').delete().eq('id', id);
+    if (error) { msg('orders-message','Nie udało się usunąć: ' + error.message,'error'); return; }
+    msg('orders-message','Zamówienie usunięte.','success');
+    await refreshOrders();
+  });
 
   // ===== VEHICLES =====
   async function refreshVehicles() {
@@ -394,9 +335,7 @@
           </td>`;
         body.appendChild(tr);
       });
-    if (!body.children.length) {
-      body.innerHTML = '<tr><td colspan="5">Brak rozbieralni.</td></tr>';
-    }
+    if (!body.children.length) body.innerHTML = '<tr><td colspan="5">Brak rozbieralni.</td></tr>';
   }
 
   function resetVehicleForm() {
@@ -450,7 +389,6 @@
   $('vehicles-body').addEventListener('click', async e => {
     const editId = e.target.closest('[data-vedit]')?.dataset.vedit;
     const delId = e.target.closest('[data-vdelete]')?.dataset.vdelete;
-
     if (editId) {
       const v = vehicles.find(x => x.id === editId);
       if (!v) return;
@@ -475,7 +413,6 @@
       $('cancel-vehicle-edit').hidden = false;
       window.scrollTo({top:0,behavior:'smooth'});
     }
-
     if (delId) {
       const v = vehicles.find(x => x.id === delId);
       if (!v || !confirm(`Usunąć rozbieralnię „${v.dismantling_number}”?`)) return;
@@ -501,7 +438,6 @@
     const q = $('product-search').value.trim().toLowerCase();
     const body = $('products-body');
     body.innerHTML = '';
-
     products
       .filter(p => {
         const v = vehicles.find(x => x.id === p.vehicle_id);
@@ -529,7 +465,8 @@
           <td><b>${esc(v ? v.dismantling_number : '—')}</b><br><small style="color:#888">${esc(v ? (v.make + ' ' + v.model) : '')}</small></td>
           <td>${esc(p.oem || '—')}</td>
           <td>${esc(p.license_number || '—')}</td>
-          <td><b>${money(p.price_pln)}</b></td>
+          <td><b>${moneyPLN(p.price_pln)}</b></td>
+          <td>${p.price_eur ? '<b>' + moneyEUR(p.price_eur) + '</b>' : '<span style="color:#555">—</span>'}</td>
           <td><span class="total-pill" style="background:#1a1a1a">${statusText(p.status)}</span></td>
           <td>
             <div class="row-actions">
@@ -543,9 +480,7 @@
         body.appendChild(tr);
         loadThumbForProduct(p.id);
       });
-    if (!body.children.length) {
-      body.innerHTML = '<tr><td colspan="9">Brak części.</td></tr>';
-    }
+    if (!body.children.length) body.innerHTML = '<tr><td colspan="10">Brak części.</td></tr>';
   }
 
   async function loadThumbForProduct(productId) {
@@ -663,11 +598,9 @@
   $('product-form').addEventListener('submit', async e => {
     e.preventDefault();
     if (!client) return;
-
     const btn = $('save-product');
     btn.disabled = true;
     msg('product-form-message','Zapisywanie…');
-
     try {
       const num = $('p-vehicle-number').value.trim();
       if (!num) throw new Error('Wpisz numer rozbieralni.');
@@ -677,6 +610,7 @@
       }
       if (!v) throw new Error('Nie znaleziono rozbieralni o numerze ' + num);
 
+      const eurRaw = $('p-price-eur').value.trim();
       const payload = {
         vehicle_id: v.id,
         sku: $('p-sku').value.trim() || null,
@@ -686,6 +620,7 @@
         license_number: $('p-license').value.trim() || null,
         condition: $('p-condition').value.trim() || null,
         price_pln: Number($('p-price').value),
+        price_eur: eurRaw === '' ? null : Number(eurRaw),
         status: statusClass($('p-status').value),
         description: $('p-description').value.trim() || null
       };
@@ -721,9 +656,7 @@
           if (!ins.error && ins.data) currentProductImages.push(...ins.data);
         }
         const failed = results.filter(r => r && r.error).length;
-        if (failed) {
-          msg('product-form-message', `Zapisano część. ${failed} zdjęć nie udało się wgrać.`, 'error');
-        }
+        if (failed) msg('product-form-message', `Zapisano część. ${failed} zdjęć nie udało się wgrać.`, 'error');
       }
 
       msg('product-form-message', id ? 'Zmiany zapisane.' : 'Część dodana.', 'success');
@@ -753,6 +686,7 @@
       $('p-vehicle-number').value = v ? v.dismantling_number : '';
       $('p-sku').value = p.sku || '';
       $('p-license').value = p.license_number || '';
+      $('p-price-eur').value = p.price_eur ?? '';
 
       if (v) {
         $('vehicle-info-box').hidden = false;
@@ -814,8 +748,6 @@
     w.textContent = 'Konfiguracja nie jest gotowa. Uzupełnij config.js.';
     $('login-panel').hidden = false;
   } else {
-    client.auth.onAuthStateChange((_e, s) => {
-      showUser(s?.user || null);
-    });
+    client.auth.onAuthStateChange((_e, s) => showUser(s?.user || null));
   }
 })();
