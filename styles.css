@@ -543,3 +543,29 @@ img{display:block;max-width:100%}
   .product-image-wrap{height:220px}
   .gallery-main{height:30vh}
 }
+/* ===== LANGUAGE / CURRENCY SWITCHERS ===== */
+.switchers{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.switch-group{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden}
+.switch-group button{
+  background:transparent;border:0;color:var(--muted);
+  padding:7px 10px;font-size:11px;font-weight:800;cursor:pointer;
+  transition:background .15s,color .15s;
+  letter-spacing:.5px;
+}
+.switch-group button + button{border-left:1px solid var(--border)}
+.switch-group button:hover{color:var(--text)}
+.switch-group button.active{background:var(--accent);color:var(--accent-ink)}
+
+/* Sort select занимает всю ширину на mobile */
+.catalog-toolbar{grid-template-columns:minmax(200px,2fr) minmax(150px,1fr) minmax(150px,1fr) minmax(160px,1fr)}
+
+/* Hero title — акцент во второй строке */
+.hero h1 .accent{color:var(--accent-fg)}
+
+@media (max-width:900px){
+  .switchers{width:100%;order:10;justify-content:flex-start}
+}
+@media (max-width:620px){
+  .switch-group button{padding:6px 8px;font-size:10px}
+  .catalog-toolbar{grid-template-columns:1fr}
+}
