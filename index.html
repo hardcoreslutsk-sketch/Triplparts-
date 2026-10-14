@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TRIPL PARTS — Używane części samochodowe</title>
-<meta name="description" content="TRIPL PARTS — używane części samochodowe z Anglii. Sprawdź dostępne części i skontaktuj się z nami.">
+<meta name="description" content="TRIPL PARTS — używane części samochodowe z Anglii.">
 <meta name="theme-color" content="#0e0e0e">
 <script>
 (function(){
@@ -15,10 +15,11 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=6">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script defer src="app.js?v=4"></script>
+<script src="cart.js?v=1"></script>
+<script defer src="app.js?v=6"></script>
 </head>
 <body>
 
@@ -32,8 +33,16 @@
 <a href="#catalog">Katalog</a>
 <a href="#contact">Kontakt</a>
 <a class="admin-link" href="admin.html">Panel administratora</a>
+<a class="cart-link" href="checkout.html" aria-label="Koszyk">
+<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<circle cx="9" cy="21" r="1"></circle>
+<circle cx="20" cy="21" r="1"></circle>
+<path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"></path>
+</svg>
+<span id="cart-count" class="cart-count" hidden></span>
+</a>
 <button class="theme-toggle" id="theme-toggle" type="button"
-  aria-label="Przełącz motyw jasny / ciemny" title="Przełącz motyw">
+  aria-label="Przełącz motyw jasny / ciemny">
   <span class="theme-icon-light" aria-hidden="true">☀</span>
   <span class="theme-icon-dark" aria-hidden="true">☾</span>
 </button>
@@ -135,7 +144,10 @@
 <p class="product-oem"></p>
 <div class="product-card-bottom">
 <span class="product-price"></span>
+<div class="product-card-buttons">
+<button class="product-buy" type="button">Kup</button>
 <button class="product-contact" type="button">Zapytaj ↗</button>
+</div>
 </div>
 </div>
 </article>
@@ -165,13 +177,16 @@
 </div>
 <p class="modal-desc" id="modal-desc"></p>
 <div class="modal-actions">
-<a class="button button-primary" id="modal-whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+<button class="button button-primary" id="modal-buy" type="button">Kup</button>
+<a class="button button-secondary" id="modal-whatsapp" target="_blank" rel="noopener">WhatsApp</a>
 <a class="button button-secondary" id="modal-phone">Zadzwoń</a>
 <a class="button button-secondary" id="modal-email">E-mail</a>
 </div>
 </div>
 </div>
 </div>
+
+<div id="toast" class="toast" hidden></div>
 
 <script>
 document.getElementById("current-year").textContent = new Date().getFullYear();
