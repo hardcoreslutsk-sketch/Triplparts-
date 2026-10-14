@@ -14,12 +14,24 @@
     }
   }catch(e){}
 })();
+// Показываем ошибки прямо на странице
+window.addEventListener('error', function(e){
+  var el = document.getElementById('catalog-status');
+  if (el) {
+    el.textContent = 'JS ERROR: ' + (e.message || 'nieznany') + ' | ' + (e.filename || '') + ':' + (e.lineno || '');
+    el.style.color = '#ff8b8b';
+    el.style.padding = '16px';
+    el.style.background = '#2a1010';
+    el.style.borderRadius = '8px';
+  }
+  console.error(e);
+});
 </script>
-<link rel="stylesheet" href="styles.css?v=8">
+<link rel="stylesheet" href="styles.css?v=10">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="cart.js?v=3"></script>
-<script defer src="app.js?v=8"></script>
+<script src="cart.js?v=4"></script>
+<script defer src="app.js?v=10"></script>
 </head>
 <body>
 
