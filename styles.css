@@ -473,3 +473,56 @@ img{display:block;max-width:100%}
   .product-image-wrap{height:220px}
   .gallery-main{height:30vh}
 }
+/* ===== DOSTAWA ===== */
+.checkout-shipping,
+.checkout-grand{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding-top:12px;
+  margin-top:10px;
+  border-top:1px dashed var(--border);
+}
+.checkout-shipping span{
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+.checkout-shipping em{
+  color:#ffd97a;
+  font-size:14px;
+  font-weight:800;
+  font-style:normal;
+}
+.checkout-grand span{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+.checkout-grand b{
+  color:var(--accent-fg);
+  font-size:14px;
+  font-weight:800;
+  text-align:right;
+}
+.checkout-shipping-note{
+  margin:14px 0 0;
+  padding:10px 12px;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.5;
+}
+
+@media (max-width:620px){
+  .checkout-shipping,
+  .checkout-grand{flex-direction:column;align-items:flex-start;gap:4px}
+  .checkout-grand b{text-align:left}
+}
