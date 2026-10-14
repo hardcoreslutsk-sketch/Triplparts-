@@ -86,8 +86,12 @@
   function addToCart(p, imageUrl) {
     if (!window.TPCart) return;
     window.TPCart.add({
-      id: p.id, sku: p.sku, name: p.name,
-      price_pln: p.price_pln, image: imageUrl || ''
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      price_pln: p.price_pln,
+      price_eur: p.price_eur,
+      image: imageUrl || ''
     });
     showCartToast(p, imageUrl || '');
   }
@@ -135,7 +139,6 @@
         const hay = [p.name, p.category, p.oem, p.license_number, p.sku, p.description,
           v?.make, v?.model, v?.years, v?.dismantling_number, v?.vin]
           .map(x => String(x||'').toLowerCase());
-        // также ищем в переводе, если кэш есть
         if (window.TPTranslate) {
           hay.push(String(window.TPTranslate.get(p.name, lang)).toLowerCase());
           hay.push(String(window.TPTranslate.get(p.category, lang)).toLowerCase());
@@ -147,7 +150,6 @@
 
     list = sortList(list);
 
-    // Переводим только когда есть язык ≠ pl
     let nameDict = {}, catDict = {};
     if (lang !== 'pl' && window.TPTranslate && list.length) {
       try {
@@ -160,7 +162,6 @@
       } catch (e) { console.warn('Translation failed', e); }
     }
 
-    // Если пока переводили — был вызван новый render, пропускаем этот
     if (token !== renderToken) return;
 
     const trName = (p) => nameDict[p.name] || p.name;
