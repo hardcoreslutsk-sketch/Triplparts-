@@ -20,8 +20,7 @@
     return new Intl.NumberFormat('pt-PT', { style:'currency', currency:'EUR', maximumFractionDigits:2 }).format(Number(n)||0);
   }
   function fmtCurrency(n) {
-    if (curCurrency() === 'EUR') return fmtEur(n);
-    return fmtPln(n);
+    return curCurrency() === 'EUR' ? fmtEur(n) : fmtPln(n);
   }
   function itemPrice(it) {
     if (curCurrency() === 'EUR') {
@@ -31,57 +30,10 @@
     }
     return fmtPln(it.price_pln);
   }
-
   function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({
       '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
     }[c]));
-  }
-
-  // ===== Уведомления =====
-  async function sendEmailNotification(order, items) {
-    if (!cfg.WEB3FORMS_KEY) return;
-    const total = items.reduce((s, it) => s + Number(it.price_pln) * Number(it.qty), 0);
-    const itemsText = items.map(it =>
-      `${it.qty}× ${it.name}${it.sku ? ' (#' + it.sku + ')' : ''} — ${(Number(it.price_pln) * Number(it.qty)).toFixed(2)} zł`
-    ).join('\n');
-    const message =
-      `NOWE ZAMÓWIENIE\n\n` +
-      `Klient: ${order.customer_name}\n` +
-      `Telefon: ${order.customer_phone || '—'}\n` +
-      `E-mail: ${order.customer_email || '—'}\n` +
-      `Adres: ${order.customer_address}\n` +
-      `Uwagi: ${order.notes || '—'}\n\n` +
-      `Zamówione części:\n${itemsText}\n\n` +
-      `Wartość części: ${total.toFixed(2)} zł\n` +
-      `Dostawa: DO USTALENIA`;
-    try {
-      await fetch('https://api.web3forms.com/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          access_key: cfg.WEB3FORMS_KEY,
-          subject: 'Nowe zamówienie — ' + order.customer_name,
-          from_name: 'TRIPL PARTS',
-          name: order.customer_name,
-          email: order.customer_email || cfg.EMAIL || '',
-          phone: order.customer_phone || '',
-          message
-        })
-      });
-    } catch (e) { console.warn('Web3Forms:', e); }
-  }
-
-  async function sendWhatsAppNotification(order, items) {
-    if (!cfg.CALLMEBOT_KEY) return;
-    const phone = (cfg.WHATSAPP_NUMBER || '').replace(/\D/g,'');
-    if (!phone) return;
-    const total = items.reduce((s, it) => s + Number(it.price_pln) * Number(it.qty), 0);
-    const itemsText = items.map(it => `${it.qty}x ${it.name} — ${(Number(it.price_pln) * Number(it.qty)).toFixed(2)} zl`).join(', ');
-    const text = `NOWE ZAMOWIENIE\nKlient: ${order.customer_name}\nTel: ${order.customer_phone || '-'}\nEmail: ${order.customer_email || '-'}\nAdres: ${order.customer_address}\nCzesci: ${itemsText}\nWartosc czesci: ${total.toFixed(2)} zl\nDostawa: DO USTALENIA`;
-    try {
-      await fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(text)}&apikey=${cfg.CALLMEBOT_KEY}`, { mode: 'no-cors' });
-    } catch (e) { console.warn('CallMeBot:', e); }
   }
 
   function renderCart() {
@@ -148,9 +100,30 @@
   const clearBtn = $('clear-cart');
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
-      if (!confirm('?')) return;
+      if (!confirm(T('checkout.confirmClear') || 'Wyczyścić koszyk?')) return;
       window.TPCart.clear(); renderCart();
     });
+  }
+
+  // Чекбокс "Создать аккаунт"
+  const regCheck = $('o-create-account');
+  const pwdBlock = $('password-block');
+  if (regCheck && pwdBlock) {
+    regCheck.addEventListener('change', () => {
+      pwdBlock.hidden = !regCheck.checked;
+    });
+  }
+
+  // Мгновенное подтверждение заказа через Edge Function
+  async function notifyOrder(orderId) {
+    if (!cfg.ORDER_EMAIL_FUNCTION_URL) return;
+    try {
+      await fetch(cfg.ORDER_EMAIL_FUNCTION_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId })
+      });
+    } catch (e) { console.warn('notifyOrder:', e); }
   }
 
   const form = $('order-form');
@@ -159,15 +132,23 @@
       e.preventDefault();
       const msg = $('order-message');
       msg.className = 'form-message'; msg.textContent = '';
+
       const name = $('o-name').value.trim();
       const phone = $('o-phone').value.trim();
       const email = $('o-email').value.trim();
       const address = $('o-address').value.trim();
       const notes = $('o-notes').value.trim();
+      const wantAccount = $('o-create-account')?.checked || false;
+      const password = $('o-password')?.value || '';
 
       if (!name) { msg.className='form-message error'; msg.textContent = T('checkout.errName'); return; }
       if (!address) { msg.className='form-message error'; msg.textContent = T('checkout.errAddress'); return; }
       if (!phone && !email) { msg.className='form-message error'; msg.textContent = T('checkout.errContact'); return; }
+      if (wantAccount) {
+        if (!email) { msg.className='form-message error'; msg.textContent = T('checkout.errEmailForAcc'); return; }
+        if (password.length < 6) { msg.className='form-message error'; msg.textContent = T('checkout.errPassword'); return; }
+      }
+
       const items = window.TPCart ? window.TPCart.read() : [];
       if (!items.length) { msg.className='form-message error'; msg.textContent = T('checkout.errEmpty'); return; }
       if (!client) { msg.className='form-message error'; msg.textContent='config.js'; return; }
@@ -176,37 +157,60 @@
       btn.disabled = true; const prev = btn.textContent; btn.textContent = T('checkout.sending');
 
       try {
+        // 1) Опциональная регистрация
+        let accountInfo = '';
+        if (wantAccount) {
+          btn.textContent = T('checkout.creatingAccount') || 'Tworzenie konta…';
+          let { data: si, error: siErr } =
+            await client.auth.signInWithPassword({ email, password });
+          if (siErr) {
+            const su = await client.auth.signUp({ email, password });
+            if (su.error && /already registered/i.test(su.error.message)) {
+              accountInfo = T('checkout.accExistsWrongPass') ||
+                'Konto z tym e-mailem już istnieje. Zaloguj się w „Moje zamówienia”.';
+            } else if (su.error) {
+              accountInfo = (T('checkout.regError') || 'Nie udało się utworzyć konta: ') + su.error.message;
+            } else if (!su.data.session) {
+              accountInfo = T('checkout.accNeedConfirm') ||
+                'Konto utworzone. Potwierdź e-mail, aby zobaczyć zamówienia.';
+            }
+          }
+        }
+
+        // 2) Создание заказа (цены считает сервер)
+        btn.textContent = T('checkout.sending');
         const itemsPayload = items.map(it => ({
-          id: it.id, sku: it.sku || '', name: it.name || '',
-          price: Number(it.price_pln) || 0,
-          price_pln: Number(it.price_pln) || 0,
-          price_eur: it.price_eur === null || it.price_eur === undefined ? null : Number(it.price_eur),
+          id: it.id,
           qty: Number(it.qty) || 1
         }));
-        const totalPln = items.reduce((s, it) => s + (Number(it.price_pln) || 0) * (Number(it.qty) || 1), 0);
-        const { data: newId, error } = await client.rpc('create_order', {
+
+        const { data: orderId, error: orderErr } = await client.rpc('create_order', {
           p_customer_name: name,
           p_customer_phone: phone || null,
           p_customer_email: email || null,
           p_customer_address: address,
           p_notes: notes || null,
-          p_items: itemsPayload,
-          p_total_pln: Number(totalPln.toFixed(2))
+          p_items: itemsPayload
         });
-        if (error) throw error;
-        const orderForNotify = { customer_name: name, customer_phone: phone, customer_email: email, customer_address: address, notes };
-        Promise.allSettled([sendEmailNotification(orderForNotify, itemsPayload), sendWhatsAppNotification(orderForNotify, itemsPayload)]);
+        if (orderErr) throw orderErr;
 
+        // 3) Уведомления (email + WhatsApp) через Edge Function
+        notifyOrder(orderId);
+
+        // 4) Успех
         window.TPCart.clear();
         $('checkout-content').hidden = true;
         $('checkout-empty').hidden = true;
         $('checkout-success').hidden = false;
-        $('order-ref').textContent = String(newId || '—').slice(0,8).toUpperCase();
+        $('order-ref').textContent = String(orderId || '—').slice(0,8).toUpperCase();
+        if (accountInfo) $('checkout-success-note').textContent = accountInfo;
         window.scrollTo({top:0, behavior:'smooth'});
       } catch (err) {
         msg.className = 'form-message error';
-        msg.textContent = T('checkout.errSend') + (err.message || '');
-      } finally { btn.disabled = false; btn.textContent = prev; }
+        msg.textContent = (T('checkout.errSend') || 'Błąd: ') + (err.message || '');
+      } finally {
+        btn.disabled = false; btn.textContent = prev;
+      }
     });
   }
 
@@ -222,6 +226,7 @@
 
   window.addEventListener('tp-cart-updated', renderCart);
   window.addEventListener('tp-currency-changed', renderCart);
+  window.addEventListener('tp-lang-changed', renderCart);
   document.addEventListener('DOMContentLoaded', renderCart);
   renderCart();
 })();
