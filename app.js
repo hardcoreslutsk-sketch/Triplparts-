@@ -23,8 +23,8 @@
     const el = document.getElementById('catalog-status');
     if (!el) return;
     el.textContent = text || '';
-    el.style.color = type === 'error' ? '#ff8b8b' : type === 'info' ? '#ffd98a' : '';
-    el.style.background = type === 'error' ? '#2a1010' : type === 'info' ? '#2a2210' : '';
+    el.style.color = type === 'error' ? '#dc2626' : type === 'info' ? '#2563eb' : '';
+    el.style.background = type === 'error' ? '#fee2e2' : type === 'info' ? '#eff6ff' : '';
     el.style.padding = type ? '14px' : '';
     el.style.borderRadius = type ? '8px' : '';
   }
@@ -36,8 +36,8 @@
   }
   const placeholder = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="440" viewBox="0 0 640 440">' +
-    '<rect width="640" height="440" fill="#1a1a1a"/>' +
-    '<g fill="none" stroke="#3a3a3a" stroke-width="5">' +
+    '<rect width="640" height="440" fill="#eef1f5"/>' +
+    '<g fill="none" stroke="#c7cdd6" stroke-width="5">' +
     '<path d="M170 280h300l-35-80H235z"/>' +
     '<circle cx="235" cy="300" r="32"/><circle cx="405" cy="300" r="32"/>' +
     '<path d="M260 205l28-38h90l40 38"/></g></svg>'
@@ -212,9 +212,9 @@
   if (themeToggle) {
     themeToggle.addEventListener('click', () => {
       const root = document.documentElement;
-      const isLight = root.getAttribute('data-theme') === 'light';
-      if (isLight) { root.removeAttribute('data-theme'); try{localStorage.setItem('tp-theme','dark');}catch(e){} }
-      else { root.setAttribute('data-theme','light'); try{localStorage.setItem('tp-theme','light');}catch(e){} }
+      const isDark = root.getAttribute('data-theme') === 'dark';
+      if (isDark) { root.removeAttribute('data-theme'); try{localStorage.setItem('tp-theme','light');}catch(e){} }
+      else { root.setAttribute('data-theme','dark'); try{localStorage.setItem('tp-theme','dark');}catch(e){} }
     });
   }
 
