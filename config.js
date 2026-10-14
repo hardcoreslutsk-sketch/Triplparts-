@@ -10,5 +10,8 @@ window.APP_CONFIG = Object.freeze({
   WEB3FORMS_KEY: "0f36b711-cee4-49c7-af5b-a5a5f43134ff",
 
   // CallMeBot — уведомления в WhatsApp
-  CALLMEBOT_KEY: "5455277"
+  CALLMEBOT_KEY: "5455277",
+
+  // DeepL API Free — автоматический перевод товаров
+  DEEPL_KEY: "c3e60a16-2ea9-4b63-8039-c5b74ae0226a:fx"
 });
