@@ -1,9 +1,9 @@
 window.TPTranslate = (() => {
   const cfg = window.APP_CONFIG || {};
-  const CACHE_KEY = 'tp-tr-cache';
+  const CACHE_KEY = 'tp-tr-cache-v2';
   const ENDPOINT = 'https://api-free.deepl.com/v2/translate';
+  const PROXY = 'https://corsproxy.io/?url=';
 
-  // Куда переводим
   const TARGET = { en: 'EN-US', pt: 'PT-PT' };
 
   let cache = {};
@@ -12,7 +12,7 @@ window.TPTranslate = (() => {
 
   function persist() {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); }
-    catch (e) { /* quota — ignore */ }
+    catch (e) {}
   }
 
   function lookup(lang, text) {
@@ -24,10 +24,6 @@ window.TPTranslate = (() => {
     cache[lang][text] = translated;
   }
 
-  /**
-   * Переводит массив текстов. Возвращает объект {оригинал: перевод}.
-   * Если ключа нет или язык PL — возвращает пустой объект (используйте .get).
-   */
   async function translateMany(texts, lang) {
     if (lang === 'pl' || !TARGET[lang]) return {};
     if (!cfg.DEEPL_KEY) return {};
@@ -40,10 +36,8 @@ window.TPTranslate = (() => {
       if (c) result[t] = c;
       else missing.push(t);
     });
-
     if (!missing.length) return result;
 
-    // DeepL принимает до 50 текстов за раз — бьём на пачки
     const batches = [];
     for (let i = 0; i < missing.length; i += 40) batches.push(missing.slice(i, i + 40));
 
@@ -54,7 +48,9 @@ window.TPTranslate = (() => {
         body.append('target_lang', TARGET[lang]);
         batch.forEach(t => body.append('text', t));
 
-        const res = await fetch(ENDPOINT, {
+        // Прокси-обёртка для обхода CORS
+        const proxiedUrl = PROXY + encodeURIComponent(ENDPOINT);
+        const res = await fetch(proxiedUrl, {
           method: 'POST',
           headers: {
             'Authorization': 'DeepL-Auth-Key ' + cfg.DEEPL_KEY,
@@ -87,23 +83,11 @@ window.TPTranslate = (() => {
     return result;
   }
 
-  /** Синхронный доступ к кэшу. Если нет — возвращает оригинал. */
   function get(text, lang) {
     if (!text) return text;
     if (lang === 'pl') return text;
     return lookup(lang, text) || text;
   }
 
-  /** Утилита: применить перевод к объекту товара */
-  function applyToProduct(product, lang, dict) {
-    if (!product) return product;
-    const tr = t => (dict && dict[t]) ? dict[t] : (lookup(lang, t) || t);
-    return Object.assign({}, product, {
-      _trName: tr(product.name),
-      _trCategory: tr(product.category),
-      _trDescription: tr(product.description)
-    });
-  }
-
-  return { translateMany, get, applyToProduct };
+  return { translateMany, get };
 })();
