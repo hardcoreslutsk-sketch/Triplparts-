@@ -14,11 +14,13 @@
   let vehicles = [];
   let products = [];
   let orders = [];
+  let imagesByProduct = {};       // { productId: [url, url, ...] }
   let currentProductImages = [];
+  let pendingImageDeletes = [];   // отложенное удаление
   let loadedVehicle = null;
 
   const MAX_IMAGES = 20;
-  const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
   const COMPRESS_MAX_SIDE = 1280;
   const COMPRESS_QUALITY = 0.75;
   const UPLOAD_CONCURRENCY = 3;
@@ -120,7 +122,7 @@
         try {
           const compressed = await compressImage(files[idx]);
           if (compressed.size > MAX_IMAGE_BYTES) {
-            results[idx] = { error: 'Za duże zdjęcie.' };
+            results[idx] = { error: 'Za duże zdjęcie (max 5 MB).' };
           } else {
             const path = `${uuid()}.jpg`;
             const up = await client.storage.from('product-images')
@@ -162,7 +164,7 @@
     const { error } = await client.auth.signInWithPassword({
       email: $('email').value, password: $('password').value
     });
-    if (error) { msg('login-message','Nie udało się zalogować.','error'); return; }
+    if (error) { msg('login-message','Nie udało się zalogować: ' + error.message,'error'); return; }
     msg('login-message','');
   });
 
@@ -229,7 +231,7 @@
             <div class="order-item">
               <span class="qty">${esc(it.qty || 1)}×</span>
               <span class="name">${esc(it.name || '—')}${it.sku ? ` <span class="sku">#${esc(it.sku)}</span>` : ''}</span>
-              <span class="price">${moneyPLN(Number(it.price) * Number(it.qty || 1))}</span>
+              <span class="price">${moneyPLN(Number(it.price_pln) * Number(it.qty || 1))}</span>
             </div>`).join('')
         : '<div class="order-item"><span class="name">— brak danych —</span></div>';
       const customerPhoneDigits = String(o.customer_phone || '').replace(/\D/g,'');
@@ -244,7 +246,7 @@
         </div>
         <div class="order-customer">
           <div class="name">${esc(o.customer_name || '—')}</div>
-          ${o.customer_phone ? `<div class="contact-row"><span>Telefon</span><a href="tel:${esc(o.customer_phone.replace(/[^+\d]/g,''))}">${esc(o.customer_phone)}</a></div>` : ''}
+          ${o.customer_phone ? `<div class="contact-row"><span>Telefon</span><a href="tel:${esc(String(o.customer_phone).replace(/[^+\d]/g,''))}">${esc(o.customer_phone)}</a></div>` : ''}
           ${o.customer_email ? `<div class="contact-row"><span>E-mail</span><a href="mailto:${esc(o.customer_email)}">${esc(o.customer_email)}</a></div>` : ''}
         </div>
         <div class="order-address"><b style="color:#888;font-size:11px;display:block;margin-bottom:4px;letter-spacing:.05em">ADRES DOSTAWY</b>${esc(o.customer_address || '—')}</div>
@@ -253,7 +255,7 @@
         <div class="order-total"><span>Razem</span><b>${moneyPLN(o.total_pln)}</b></div>
         <div class="order-actions">
           ${waHref ? `<a class="wa" href="${esc(waHref)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
-          ${o.customer_phone ? `<a href="tel:${esc(o.customer_phone.replace(/[^+\d]/g,''))}">Zadzwoń</a>` : ''}
+          ${o.customer_phone ? `<a href="tel:${esc(String(o.customer_phone).replace(/[^+\d]/g,''))}">Zadzwoń</a>` : ''}
           ${o.customer_email ? `<a href="mailto:${esc(o.customer_email)}">E-mail</a>` : ''}
         </div>
         <div class="order-actions">
@@ -330,7 +332,7 @@
           <td>
             <div class="row-actions">
               <button data-vedit="${esc(v.id)}">Edytuj</button>
-              <button data-vdelete="${esc(v.id)}">Usuń</button>
+              <button data-vdelete="${esc(v.id)}" class="danger">Usuń</button>
             </div>
           </td>`;
         body.appendChild(tr);
@@ -425,10 +427,16 @@
 
   // ===== PRODUCTS =====
   async function refreshProducts() {
-    const { data, error } = await client.from('products').select('*')
-      .order('created_at',{ascending:false}).limit(5000);
-    if (error) { msg('products-message','Błąd pobierania: '+error.message,'error'); return; }
-    products = data || [];
+    const [pRes, iRes] = await Promise.all([
+      client.from('products').select('*').order('created_at',{ascending:false}).limit(5000),
+      client.from('product_images').select('product_id, url, sort_order').order('sort_order')
+    ]);
+    if (pRes.error) { msg('products-message','Błąd pobierania: '+pRes.error.message,'error'); return; }
+    products = pRes.data || [];
+    imagesByProduct = {};
+    (iRes.data || []).forEach(im => {
+      (imagesByProduct[im.product_id] = imagesByProduct[im.product_id] || []).push(im.url);
+    });
     $('product-total').textContent = products.length;
     renderProducts();
   }
@@ -457,9 +465,13 @@
       })
       .forEach(p => {
         const v = vehicles.find(x => x.id === p.vehicle_id);
+        const imgs = imagesByProduct[p.id] || [];
+        const thumb = imgs[0]
+          ? `<img src="${esc(imgs[0])}" alt="" class="table-thumb">`
+          : '<div class="table-thumb" style="background:#222;display:grid;place-items:center;color:#555;font-size:10px">brak</div>';
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td><div class="table-thumb" data-thumb="${esc(p.id)}"></div></td>
+          <td>${thumb}</td>
           <td><span class="sku-cell">${esc(p.sku || '—')}</span></td>
           <td><b>${esc(p.name)}</b><br><small style="color:#888">${esc(p.category)}</small></td>
           <td><b>${esc(v ? v.dismantling_number : '—')}</b><br><small style="color:#888">${esc(v ? (v.make + ' ' + v.model) : '')}</small></td>
@@ -478,21 +490,8 @@
             </div>
           </td>`;
         body.appendChild(tr);
-        loadThumbForProduct(p.id);
       });
     if (!body.children.length) body.innerHTML = '<tr><td colspan="10">Brak części.</td></tr>';
-  }
-
-  async function loadThumbForProduct(productId) {
-    const cell = document.querySelector(`[data-thumb="${productId}"]`);
-    if (!cell) return;
-    const { data } = await client.from('product_images').select('url')
-      .eq('product_id', productId).order('sort_order').limit(1);
-    if (data && data[0]) {
-      cell.innerHTML = `<img src="${esc(data[0].url)}" alt="" class="table-thumb">`;
-    } else {
-      cell.innerHTML = '<div class="table-thumb" style="background:#222;display:grid;place-items:center;color:#555;font-size:10px">brak</div>';
-    }
   }
 
   $('product-search').addEventListener('input', renderProducts);
@@ -536,9 +535,16 @@
         </div>`;
       wrap.appendChild(div);
     });
+    if (pendingImageDeletes.length) {
+      const note = document.createElement('div');
+      note.className = 'help';
+      note.style.marginTop = '8px';
+      note.textContent = `Zaplanowano usunięcie ${pendingImageDeletes.length} zdjęć (zostaną usunięte po zapisie).`;
+      wrap.appendChild(note);
+    }
   }
 
-  $('product-images').addEventListener('click', async e => {
+  $('product-images').addEventListener('click', e => {
     const up = e.target.closest('[data-up]')?.dataset.up;
     const down = e.target.closest('[data-down]')?.dataset.down;
     const rm = e.target.closest('[data-remove]')?.dataset.remove;
@@ -547,7 +553,6 @@
       if (i > 0) {
         [currentProductImages[i-1], currentProductImages[i]] = [currentProductImages[i], currentProductImages[i-1]];
         renderProductImages();
-        await persistImageOrder();
       }
     }
     if (down !== undefined) {
@@ -555,21 +560,28 @@
       if (i < currentProductImages.length - 1) {
         [currentProductImages[i+1], currentProductImages[i]] = [currentProductImages[i], currentProductImages[i+1]];
         renderProductImages();
-        await persistImageOrder();
       }
     }
     if (rm !== undefined) {
       const i = Number(rm);
       const img = currentProductImages[i];
       if (!img) return;
-      if (img.id) {
-        await client.from('product_images').delete().eq('id', img.id);
-        await deleteStorageFile(img.url);
-      }
+      // Откладываем удаление до сохранения
+      if (img.id) pendingImageDeletes.push(img);
       currentProductImages.splice(i, 1);
       renderProductImages();
     }
   });
+
+  async function applyPendingDeletes() {
+    for (const img of pendingImageDeletes) {
+      if (img.id) {
+        await client.from('product_images').delete().eq('id', img.id);
+        await deleteStorageFile(img.url);
+      }
+    }
+    pendingImageDeletes = [];
+  }
 
   async function persistImageOrder() {
     for (let i = 0; i < currentProductImages.length; i++) {
@@ -585,6 +597,7 @@
     $('vehicle-info-box').hidden = true;
     $('vehicle-info-box').innerHTML = '';
     currentProductImages = [];
+    pendingImageDeletes = [];
     loadedVehicle = null;
     renderProductImages();
     $('product-form-title').textContent = 'Dodaj część';
@@ -605,7 +618,7 @@
       const num = $('p-vehicle-number').value.trim();
       if (!num) throw new Error('Wpisz numer rozbieralni.');
       let v = loadedVehicle;
-      if (!v || v.dismantling_number.toLowerCase() !== num.toLowerCase()) {
+      if (!v || String(v.dismantling_number).toLowerCase() !== num.toLowerCase()) {
         v = vehicles.find(x => String(x.dismantling_number).toLowerCase() === num.toLowerCase());
       }
       if (!v) throw new Error('Nie znaleziono rozbieralni o numerze ' + num);
@@ -637,8 +650,15 @@
         productId = res.data.id;
       }
 
+      // Применяем отложенные удаления
+      await applyPendingDeletes();
+
+      // Обновляем порядок существующих изображений
+      await persistImageOrder();
+
+      // Загружаем новые файлы
       const files = Array.from($('p-images').files || []);
-      const existingCount = currentProductImages.length;
+      const existingCount = currentProductImages.filter(x => x.id).length;
       const room = MAX_IMAGES - existingCount;
       const toUpload = files.slice(0, room);
 
@@ -648,8 +668,11 @@
           btn.textContent = `Zdjęcia ${done}/${total}…`;
         });
         const inserts = [];
-        results.forEach((r, i) => {
-          if (r && r.url) inserts.push({ product_id: productId, url: r.url, sort_order: existingCount + i });
+        let order = existingCount;
+        results.forEach(r => {
+          if (r && r.url) {
+            inserts.push({ product_id: productId, url: r.url, sort_order: order++ });
+          }
         });
         if (inserts.length) {
           const ins = await client.from('product_images').insert(inserts).select();
@@ -712,6 +735,7 @@
       const { data: imgs } = await client.from('product_images').select('*')
         .eq('product_id', p.id).order('sort_order');
       currentProductImages = imgs || [];
+      pendingImageDeletes = [];
       renderProductImages();
 
       $('product-form-title').textContent = 'Edytuj część';
@@ -744,10 +768,15 @@
   // ===== INIT =====
   if (!configured) {
     const w = $('setup-warning');
-    w.hidden = false;
-    w.textContent = 'Konfiguracja nie jest gotowa. Uzupełnij config.js.';
+    if (w) {
+      w.hidden = false;
+      w.textContent = 'Konfiguracja nie jest gotowa. Uzupełnij config.js.';
+    }
     $('login-panel').hidden = false;
   } else {
+    client.auth.getSession().then(({ data }) => {
+      showUser(data?.session?.user || null);
+    });
     client.auth.onAuthStateChange((_e, s) => showUser(s?.user || null));
   }
 })();
