@@ -13,12 +13,12 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="styles.css?v=3000">
+<link rel="stylesheet" href="styles.css?v=3001">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=3000"></script>
-<script src="i18n.js?v=3000"></script>
-<script src="cart.js?v=3000"></script>
-<script defer src="checkout.js?v=3000"></script>
+<script src="config.js?v=3001"></script>
+<script src="i18n.js?v=3001"></script>
+<script src="cart.js?v=3001"></script>
+<script defer src="checkout.js?v=3001"></script>
 </head>
 <body>
 
@@ -36,18 +36,17 @@
       </button>
     </div>
   </div>
-
   <div class="container header-bottom-row">
     <nav class="header-nav">
       <a href="index.html" data-i18n="nav.catalog">Katalog</a>
       <a href="index.html#contact" data-i18n="nav.contact">Kontakt</a>
+      <a href="my-orders.html" data-i18n="nav.myOrders">Moje zamówienia</a>
       <a href="admin.html" data-i18n="nav.admin">Panel administratora</a>
     </nav>
     <div class="header-switchers">
       <div class="switcher">
         <button class="switcher-btn" type="button" data-switcher-toggle="lang" aria-expanded="false">
-          <span data-current-lang>PL</span>
-          <span class="caret">▼</span>
+          <span data-current-lang>PL</span><span class="caret">▼</span>
         </button>
         <div class="switcher-menu" data-switcher-menu="lang" hidden>
           <button type="button" data-lang-btn="pl">Polski</button>
@@ -57,8 +56,7 @@
       </div>
       <div class="switcher">
         <button class="switcher-btn" type="button" data-switcher-toggle="currency" aria-expanded="false">
-          <span data-current-currency>PLN</span>
-          <span class="caret">▼</span>
+          <span data-current-currency>PLN</span><span class="caret">▼</span>
         </button>
         <div class="switcher-menu" data-switcher-menu="currency" hidden>
           <button type="button" data-currency-btn="PLN">PLN — złoty</button>
@@ -82,7 +80,11 @@
 <h1 data-i18n="checkout.thanks">Dziękujemy!</h1>
 <p data-i18n="checkout.thanksText">Twoje zamówienie zostało wysłane.</p>
 <p class="success-ref"><span data-i18n="checkout.orderNum">Numer zamówienia:</span> <b id="order-ref"></b></p>
-<a class="button button-primary" href="index.html" data-i18n="checkout.backToCatalog">Wróć do katalogu</a>
+<p id="checkout-success-note" class="muted" style="max-width:600px;margin:12px auto;"></p>
+<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+  <a class="button button-primary" href="index.html" data-i18n="checkout.backToCatalog">Wróć do katalogu</a>
+  <a class="button button-secondary" href="my-orders.html" data-i18n="checkout.viewMyOrders">Moje zamówienia</a>
+</div>
 </div>
 
 <div id="checkout-content" class="checkout-grid" hidden>
@@ -97,6 +99,21 @@
 <label class="full"><span data-i18n="checkout.address">Adres dostawy</span> *<textarea id="o-address" rows="3" required maxlength="500" data-i18n-placeholder="checkout.addressPh" placeholder="Ulica, numer, kod pocztowy, miasto, kraj"></textarea></label>
 <label class="full"><span data-i18n="checkout.notes">Uwagi (opcjonalnie)</span><textarea id="o-notes" rows="2" maxlength="1000" data-i18n-placeholder="checkout.notesPh" placeholder="Dodatkowe informacje"></textarea></label>
 </div>
+
+<div class="register-block">
+  <label class="reg-checkbox">
+    <input type="checkbox" id="o-create-account">
+    <span data-i18n="checkout.createAccount">Utwórz konto, aby śledzić zamówienia (opcjonalnie)</span>
+  </label>
+  <div id="password-block" hidden>
+    <label class="full">
+      <span data-i18n="checkout.password">Hasło (min. 6 znaków)</span>
+      <input type="password" id="o-password" minlength="6" autocomplete="new-password" placeholder="••••••">
+      <span class="help" data-i18n="checkout.passwordHint">Po utworzeniu konta zobaczysz swoje zamówienia w sekcji „Moje zamówienia”.</span>
+    </label>
+  </div>
+</div>
+
 <p class="checkout-hint" data-i18n="checkout.hint">Podaj telefon lub e-mail.</p>
 <p id="order-message" class="form-message" role="status"></p>
 <button class="button button-primary checkout-submit" type="submit" id="submit-order" data-i18n="checkout.submit">Złóż zamówienie</button>
