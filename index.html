@@ -14,24 +14,12 @@
     }
   }catch(e){}
 })();
-// Показываем ошибки прямо на странице
-window.addEventListener('error', function(e){
-  var el = document.getElementById('catalog-status');
-  if (el) {
-    el.textContent = 'JS ERROR: ' + (e.message || 'nieznany') + ' | ' + (e.filename || '') + ':' + (e.lineno || '');
-    el.style.color = '#ff8b8b';
-    el.style.padding = '16px';
-    el.style.background = '#2a1010';
-    el.style.borderRadius = '8px';
-  }
-  console.error(e);
-});
 </script>
-<link rel="stylesheet" href="styles.css?v=10">
+<link rel="stylesheet" href="styles.css?v=13">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="cart.js?v=4"></script>
-<script defer src="app.js?v=10"></script>
+<script src="cart.js?v=6"></script>
+<script defer src="app.js?v=13"></script>
 </head>
 <body>
 
@@ -39,7 +27,6 @@ window.addEventListener('error', function(e){
 <div class="container header-inner">
 <a class="brand" href="index.html">
 <span class="brand-name">TRIPL PARTS</span>
-<span class="brand-caption">USED CAR PARTS</span>
 </a>
 <nav class="header-nav">
 <a href="#catalog">Katalog</a>
@@ -68,7 +55,7 @@ window.addEventListener('error', function(e){
 <span class="eyebrow">UŻYWANE CZĘŚCI • Z ANGLII</span>
 <h1>Części samochodowe.<br><span>Sprawdzone i gotowe.</span></h1>
 <p>Używane części z rozbieranych samochodów. Wyszukaj po marce, modelu, numerze OEM lub numerze rozbieralni.</p>
-<a class="button button-primary" href="#catalog">Przeglądaj katalog ↘</a>
+<a class="button button-primary" href="#catalog">Przeglądaj katalog</a>
 </div>
 <div class="hero-side" aria-hidden="true">
 <span class="hero-side-number">TP</span>
@@ -126,7 +113,7 @@ window.addEventListener('error', function(e){
 <p>Skontaktuj się z nami. Podaj markę, model samochodu oraz numer OEM lub numer rozbieralni.</p>
 </div>
 <div class="contact-actions">
-<a class="button button-primary" id="whatsapp-cta" href="#" target="_blank" rel="noopener noreferrer">WhatsApp ↗</a>
+<a class="button button-primary" id="whatsapp-cta" href="#" target="_blank" rel="noopener noreferrer">WhatsApp</a>
 <a class="button button-secondary" id="phone-cta" href="#">Zadzwoń</a>
 <a class="contact-email" href="mailto:triplparts@gmail.com">triplparts@gmail.com</a>
 </div>
@@ -157,7 +144,7 @@ window.addEventListener('error', function(e){
 <span class="product-price"></span>
 <div class="product-card-buttons">
 <button class="product-buy" type="button">Kup</button>
-<button class="product-contact" type="button">Zapytaj ↗</button>
+<button class="product-contact" type="button">Zapytaj</button>
 </div>
 </div>
 </div>
