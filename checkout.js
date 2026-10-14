@@ -21,11 +21,7 @@
 
   // ===== Уведомления =====
   async function sendEmailNotification(order, items) {
-    if (!cfg.WEB3FORMS_KEY) {
-      console.warn('Web3Forms: brak klucza, pomijam email.');
-      return;
-    }
-
+    if (!cfg.WEB3FORMS_KEY) return;
     const total = items.reduce((s, it) => s + Number(it.price) * Number(it.qty), 0);
     const itemsText = items.map(it =>
       `${it.qty}× ${it.name}${it.sku ? ' (#' + it.sku + ')' : ''} — ${(Number(it.price) * Number(it.qty)).toFixed(2)} zł`
@@ -64,10 +60,7 @@
   }
 
   async function sendWhatsAppNotification(order, items) {
-    if (!cfg.CALLMEBOT_KEY) {
-      console.warn('CallMeBot: brak klucza, pomijam WhatsApp.');
-      return;
-    }
+    if (!cfg.CALLMEBOT_KEY) return;
     const phone = (cfg.WHATSAPP_NUMBER || '').replace(/\D/g,'');
     if (!phone) return;
 
@@ -89,7 +82,6 @@
     const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(text)}&apikey=${cfg.CALLMEBOT_KEY}`;
 
     try {
-      console.log('CallMeBot URL:', url);
       await fetch(url, { mode: 'no-cors' });
     } catch (e) {
       console.warn('CallMeBot notification failed:', e);
@@ -192,7 +184,7 @@
     });
   }
 
-  // ===== Отправка заказа =====
+  // ===== Отправка заказа (через RPC функцию) =====
   const form = $('order-form');
   if (form) {
     form.addEventListener('submit', async e => {
@@ -226,36 +218,48 @@
       btn.textContent = 'Wysyłanie…';
 
       try {
-        const payload = {
-          customer_name: name,
-          customer_phone: phone || null,
-          customer_email: email || null,
-          customer_address: address,
-          notes: notes || null,
-          items: items.map(it => ({
-            id: it.id,
-            sku: it.sku || '',
-            name: it.name || '',
-            price: Number(it.price) || 0,
-            qty: Number(it.qty) || 1
-          })),
-          total_pln: Number(window.TPCart.total().toFixed(2)),
-          status: 'new'
-        };
+        const itemsPayload = items.map(it => ({
+          id: it.id,
+          sku: it.sku || '',
+          name: it.name || '',
+          price: Number(it.price) || 0,
+          qty: Number(it.qty) || 1
+        }));
 
-        const { data, error } = await client.from('orders').insert(payload).select('id').single();
+        const total = Number(window.TPCart.total().toFixed(2));
+
+        // Вызов RPC функции create_order
+        const { data: newId, error } = await client.rpc('create_order', {
+          p_customer_name: name,
+          p_customer_phone: phone || null,
+          p_customer_email: email || null,
+          p_customer_address: address,
+          p_notes: notes || null,
+          p_items: itemsPayload,
+          p_total_pln: total
+        });
+
         if (error) throw error;
 
-        sendNotifications(payload, payload.items);
+        // Уведомления (не блокируем клиента)
+        const orderForNotify = {
+          customer_name: name,
+          customer_phone: phone,
+          customer_email: email,
+          customer_address: address,
+          notes: notes
+        };
+        sendNotifications(orderForNotify, itemsPayload);
 
         window.TPCart.clear();
 
         $('checkout-content').hidden = true;
         $('checkout-empty').hidden = true;
         $('checkout-success').hidden = false;
-        $('order-ref').textContent = (data && data.id ? String(data.id).slice(0,8) : '—').toUpperCase();
+        $('order-ref').textContent = String(newId || '—').slice(0,8).toUpperCase();
         window.scrollTo({top:0, behavior:'smooth'});
       } catch (err) {
+        console.error('RPC create_order error:', err);
         msg.className = 'form-message error';
         msg.textContent = 'Nie udało się wysłać zamówienia: ' + (err.message || 'nieznany błąd');
       } finally {
