@@ -42,19 +42,67 @@
 
   const safe = s => String(s || '').replace(/\s+/g,' ').trim();
 
-  function showToast(text) {
-    const t = document.getElementById('toast');
-    if (!t) return;
-    t.textContent = text;
-    t.hidden = false;
-    t.classList.add('show');
-    clearTimeout(showToast._timer);
-    showToast._timer = setTimeout(() => {
-      t.classList.remove('show');
-      setTimeout(() => { t.hidden = true; }, 250);
-    }, 2200);
+  // ========== TOASTS ==========
+  function buildToast(html) {
+    const wrap = document.getElementById('toast-wrap');
+    if (!wrap) return null;
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = html;
+    wrap.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    const remove = () => {
+      el.classList.remove('show');
+      el.classList.add('hide');
+      setTimeout(() => el.remove(), 350);
+    };
+    const btn = el.querySelector('[data-toast-close]');
+    if (btn) btn.addEventListener('click', remove);
+    return { el, remove };
   }
 
+  function showCartToast(product, imageUrl) {
+    const t = buildToast(`
+      ${imageUrl
+        ? `<img class="toast-thumb" src="${esc(imageUrl)}" alt="">`
+        : '<div class="toast-icon">✓</div>'}
+      <div class="toast-body">
+        <div class="toast-title">Dodano do koszyka</div>
+        <div class="toast-sub">${esc(product.name || '')}</div>
+        <div class="toast-actions">
+          <a href="checkout.html">Zobacz koszyk</a>
+          <button type="button" data-toast-close>Zamknij</button>
+        </div>
+      </div>
+    `);
+    if (t) setTimeout(t.remove, 4200);
+  }
+
+  function showInfoToast(text) {
+    const t = buildToast(`
+      <div class="toast-icon">✓</div>
+      <div class="toast-body"><div class="toast-title">${esc(text)}</div></div>
+    `);
+    if (t) setTimeout(t.remove, 3000);
+  }
+
+  // ========== CART ==========
+  function addToCart(p, imageUrl) {
+    if (!window.TPCart) {
+      console.warn('TPCart not loaded');
+      return;
+    }
+    window.TPCart.add({
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      price_pln: p.price_pln,
+      image: imageUrl || ''
+    });
+    showCartToast(p, imageUrl || '');
+  }
+
+  // ========== CONTACT URL ==========
   function contactUrl(p, vehicle) {
     const number = (cfg.WHATSAPP_NUMBER || '').replace(/\D/g,'');
     const lines = [
@@ -72,6 +120,7 @@
                   : `https://wa.me/?text=${encodeURIComponent(msg)}`;
   }
 
+  // ========== FILTERS ==========
   function setFilters() {
     const makes = [...new Set(products.map(p => {
       const v = vehicles.find(x => x.id === p.vehicle_id);
@@ -90,6 +139,7 @@
     mSel.value = om; cSel.value = oc;
   }
 
+  // ========== RENDER ==========
   function render() {
     const term = $('search').value.trim().toLowerCase();
     const make = $('make-filter').value;
@@ -150,19 +200,7 @@
     $('empty-state').hidden = list.length !== 0;
   }
 
-  function addToCart(p, imageUrl) {
-    if (!window.TPCart) return;
-    window.TPCart.add({
-      id: p.id,
-      sku: p.sku,
-      name: p.name,
-      price_pln: p.price_pln,
-      image: imageUrl || ''
-    });
-    showToast('Dodano do koszyka: ' + (p.name || ''));
-  }
-
-  // ===== MODAL =====
+  // ========== MODAL ==========
   let modalImages = [];
   let modalIndex = 0;
   let modalProduct = null;
@@ -186,7 +224,7 @@
       ['Numer licencyjny', p.license_number],
       ['Status', statusText(p.status)]
     ];
-    $('modal-part-info').innerHTML = partInfo.filter(([,v]) => v)
+    $('modal-part-info').innerHTML = partInfo.filter(([,val]) => val)
       .map(([k,val]) => `<div><dt>${esc(k)}</dt><dd>${esc(val)}</dd></div>`).join('');
 
     const vehInfo = v ? [
@@ -207,8 +245,7 @@
       .map(([k,val]) => `<div><dt>${esc(k)}</dt><dd>${esc(val)}</dd></div>`).join('')
       || '<div><dd>Brak informacji o samochodzie.</dd></div>';
 
-    const wa = $('modal-whatsapp');
-    wa.href = contactUrl(p, v);
+    $('modal-whatsapp').href = contactUrl(p, v);
 
     const phone = (cfg.PHONE_NUMBER || '').replace(/[^+\d]/g,'');
     $('modal-phone').href = phone ? 'tel:' + phone : '#';
@@ -267,7 +304,7 @@
     if (e.key === 'ArrowRight') $('modal-next').click();
   });
 
-  // ===== THEME TOGGLE =====
+  // ========== THEME ==========
   const themeToggle = document.getElementById('theme-toggle');
   if (themeToggle) {
     themeToggle.addEventListener('click', () => {
@@ -283,7 +320,7 @@
     });
   }
 
-  // ===== LOAD =====
+  // ========== LOAD ==========
   async function load() {
     const status = $('catalog-status');
     status.textContent = 'Ładowanie katalogu…';
