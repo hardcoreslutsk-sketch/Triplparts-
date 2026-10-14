@@ -17,6 +17,7 @@
   let products = [];
   let vehicles = [];
   let imagesByProduct = {};
+  let renderToken = 0;
 
   function setStatus(text, type) {
     const el = document.getElementById('catalog-status');
@@ -46,7 +47,6 @@
     if (!i18n) return String(p.price_pln);
     return i18n.formatProductPrice(p);
   }
-
   function statusText(s) {
     const map = {
       available: T('status.available'),
@@ -56,20 +56,15 @@
     };
     return map[s] || T('status.available');
   }
+  function currentLang() { return i18n ? i18n.getLang() : 'pl'; }
 
   function buildToast(html) {
     const wrap = document.getElementById('toast-wrap');
     if (!wrap) return null;
     const el = document.createElement('div');
-    el.className = 'toast';
-    el.innerHTML = html;
-    wrap.appendChild(el);
+    el.className = 'toast'; el.innerHTML = html; wrap.appendChild(el);
     requestAnimationFrame(() => el.classList.add('show'));
-    const remove = () => {
-      el.classList.remove('show');
-      el.classList.add('hide');
-      setTimeout(() => el.remove(), 350);
-    };
+    const remove = () => { el.classList.remove('show'); el.classList.add('hide'); setTimeout(() => el.remove(), 350); };
     const btn = el.querySelector('[data-toast-close]');
     if (btn) btn.addEventListener('click', remove);
     return { el, remove };
@@ -115,30 +110,18 @@
     mSel.value = om; cSel.value = oc;
   }
 
-  function getSort() {
-    const sel = $('sort-filter');
-    return sel ? sel.value : 'new';
-  }
-
+  function getSort() { const s = $('sort-filter'); return s ? s.value : 'new'; }
   function sortList(list) {
     const s = getSort();
     const arr = list.slice();
-    if (s === 'price_asc') {
-      arr.sort((a,b) => {
-        const pa = Number(a.price_pln)||0, pb = Number(b.price_pln)||0;
-        return pa - pb;
-      });
-    } else if (s === 'price_desc') {
-      arr.sort((a,b) => {
-        const pa = Number(a.price_pln)||0, pb = Number(b.price_pln)||0;
-        return pb - pa;
-      });
-    }
-    // new — оставляем порядок как пришёл (already sorted by created_at desc)
+    if (s === 'price_asc') arr.sort((a,b) => (Number(a.price_pln)||0) - (Number(b.price_pln)||0));
+    else if (s === 'price_desc') arr.sort((a,b) => (Number(b.price_pln)||0) - (Number(a.price_pln)||0));
     return arr;
   }
 
-  function render() {
+  async function render() {
+    const token = ++renderToken;
+    const lang = currentLang();
     const term = $('search').value.trim().toLowerCase();
     const make = $('make-filter').value;
     const cat  = $('category-filter').value;
@@ -152,12 +135,36 @@
         const hay = [p.name, p.category, p.oem, p.license_number, p.sku, p.description,
           v?.make, v?.model, v?.years, v?.dismantling_number, v?.vin]
           .map(x => String(x||'').toLowerCase());
+        // также ищем в переводе, если кэш есть
+        if (window.TPTranslate) {
+          hay.push(String(window.TPTranslate.get(p.name, lang)).toLowerCase());
+          hay.push(String(window.TPTranslate.get(p.category, lang)).toLowerCase());
+        }
         if (!hay.some(h => h.includes(term))) return false;
       }
       return true;
     });
 
     list = sortList(list);
+
+    // Переводим только когда есть язык ≠ pl
+    let nameDict = {}, catDict = {};
+    if (lang !== 'pl' && window.TPTranslate && list.length) {
+      try {
+        const names = list.map(p => p.name);
+        const cats  = list.map(p => p.category);
+        [nameDict, catDict] = await Promise.all([
+          window.TPTranslate.translateMany(names, lang),
+          window.TPTranslate.translateMany(cats, lang)
+        ]);
+      } catch (e) { console.warn('Translation failed', e); }
+    }
+
+    // Если пока переводили — был вызван новый render, пропускаем этот
+    if (token !== renderToken) return;
+
+    const trName = (p) => nameDict[p.name] || p.name;
+    const trCat  = (p) => catDict[p.category] || p.category;
 
     grid.innerHTML = '';
     list.forEach(p => {
@@ -167,20 +174,19 @@
       const img = el.querySelector('.product-image');
       const imgs = imagesByProduct[p.id] || [];
       img.src = imgs[0] || placeholder;
-      img.alt = p.name || '';
+      img.alt = trName(p) || '';
 
       const badge = el.querySelector('.stock-badge');
       badge.textContent = statusText(p.status);
       badge.classList.add(p.status);
 
-      el.querySelector('.product-category').textContent = p.category || '—';
-      el.querySelector('.product-name').textContent = p.name;
+      el.querySelector('.product-category').textContent = trCat(p) || '—';
+      el.querySelector('.product-name').textContent = trName(p);
       el.querySelector('.product-fitment').textContent =
         v ? [v.make, v.model, v.years].filter(Boolean).join(' · ') : '';
       el.querySelector('.product-oem').textContent = p.oem ? T('card.oem')+': ' + p.oem : '';
       el.querySelector('.product-price').textContent = formatPrice(p);
 
-      // i18n для кнопок внутри шаблона
       el.querySelectorAll('[data-i18n]').forEach(node => {
         node.textContent = T(node.dataset.i18n);
       });
@@ -231,7 +237,7 @@
         (imagesByProduct[im.product_id] = imagesByProduct[im.product_id] || []).push(im.url);
       });
       setFilters();
-      render();
+      await render();
       if (!products.length) setStatus(T('catalog.empty2'), 'info');
       else setStatus('');
     } catch (e) {
@@ -256,7 +262,6 @@
     ph.href = phone ? 'tel:' + phone : '#';
   }
 
-  // Реакция на смену языка/валюты
   window.addEventListener('tp-lang-changed', () => { setFilters(); render(); });
   window.addEventListener('tp-currency-changed', () => { render(); });
 
