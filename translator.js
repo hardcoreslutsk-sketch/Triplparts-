@@ -1,8 +1,15 @@
 window.TPTranslate = (() => {
   const cfg = window.APP_CONFIG || {};
-  const CACHE_KEY = 'tp-tr-cache-v2';
+  const CACHE_KEY = 'tp-tr-cache-v3';
   const ENDPOINT = 'https://api-free.deepl.com/v2/translate';
-  const PROXY = 'https://corsproxy.io/?url=';
+
+  // Список CORS-прокси — пробуем по очереди, пока один не сработает
+  const PROXIES = [
+    url => 'https://corsproxy.io/?url=' + encodeURIComponent(url),
+    url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+    url => 'https://thingproxy.freeboard.io/fetch/' + url,
+    url => 'https://cors-anywhere.herokuapp.com/' + url
+  ];
 
   const TARGET = { en: 'EN-US', pt: 'PT-PT' };
 
@@ -11,8 +18,7 @@ window.TPTranslate = (() => {
   catch (e) { cache = {}; }
 
   function persist() {
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); }
-    catch (e) {}
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch (e) {}
   }
 
   function lookup(lang, text) {
@@ -24,9 +30,27 @@ window.TPTranslate = (() => {
     cache[lang][text] = translated;
   }
 
+  let lastError = null;
+
+  async function fetchWithProxies(targetUrl, options) {
+    let lastErr = null;
+    for (let i = 0; i < PROXIES.length; i++) {
+      const proxied = PROXIES[i](targetUrl);
+      try {
+        const res = await fetch(proxied, options);
+        if (res.ok) return res;
+        lastErr = 'proxy ' + i + ' → HTTP ' + res.status;
+      } catch (e) {
+        lastErr = 'proxy ' + i + ' → ' + (e.message || 'failed');
+      }
+    }
+    throw new Error('All proxies failed: ' + lastErr);
+  }
+
   async function translateMany(texts, lang) {
+    lastError = null;
     if (lang === 'pl' || !TARGET[lang]) return {};
-    if (!cfg.DEEPL_KEY) return {};
+    if (!cfg.DEEPL_KEY) { lastError = 'Brak klucza DeepL'; return {}; }
 
     const uniq = [...new Set((texts || []).filter(t => typeof t === 'string' && t.trim().length > 0))];
     const result = {};
@@ -48,9 +72,7 @@ window.TPTranslate = (() => {
         body.append('target_lang', TARGET[lang]);
         batch.forEach(t => body.append('text', t));
 
-        // Прокси-обёртка для обхода CORS
-        const proxiedUrl = PROXY + encodeURIComponent(ENDPOINT);
-        const res = await fetch(proxiedUrl, {
+        const res = await fetchWithProxies(ENDPOINT, {
           method: 'POST',
           headers: {
             'Authorization': 'DeepL-Auth-Key ' + cfg.DEEPL_KEY,
@@ -61,7 +83,7 @@ window.TPTranslate = (() => {
 
         if (!res.ok) {
           const txt = await res.text().catch(() => '');
-          console.warn('DeepL error', res.status, txt);
+          lastError = 'DeepL HTTP ' + res.status + ' — ' + txt.slice(0, 120);
           batch.forEach(t => { result[t] = t; });
           continue;
         }
@@ -74,12 +96,13 @@ window.TPTranslate = (() => {
           store(lang, t, tr);
         });
       } catch (e) {
-        console.warn('DeepL fetch failed', e);
+        lastError = e.message || 'fetch failed';
         batch.forEach(t => { result[t] = t; });
       }
     }
 
     persist();
+    if (lastError) console.warn('TPTranslate:', lastError);
     return result;
   }
 
@@ -89,5 +112,12 @@ window.TPTranslate = (() => {
     return lookup(lang, text) || text;
   }
 
-  return { translateMany, get };
+  function getLastError() { return lastError; }
+
+  function clearCache() {
+    cache = {};
+    try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+  }
+
+  return { translateMany, get, getLastError, clearCache };
 })();
