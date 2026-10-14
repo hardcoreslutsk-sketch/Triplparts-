@@ -14,11 +14,11 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="styles.css?v=6">
+<link rel="stylesheet" href="styles.css?v=8">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="cart.js?v=1"></script>
-<script defer src="checkout.js?v=6"></script>
+<script src="cart.js?v=3"></script>
+<script defer src="checkout.js?v=8"></script>
 </head>
 <body>
 
@@ -38,10 +38,9 @@
 </svg>
 <span id="cart-count" class="cart-count" hidden></span>
 </a>
-<button class="theme-toggle" id="theme-toggle" type="button"
-  aria-label="Przełącz motyw jasny / ciemny">
-  <span class="theme-icon-light" aria-hidden="true">☀</span>
-  <span class="theme-icon-dark" aria-hidden="true">☾</span>
+<button class="theme-toggle" id="theme-toggle" type="button" aria-label="Przełącz motyw jasny / ciemny">
+<span class="theme-icon-light" aria-hidden="true">☀</span>
+<span class="theme-icon-dark" aria-hidden="true">☾</span>
 </button>
 </nav>
 </div>
@@ -70,22 +69,31 @@
 <h1>Zamówienie</h1>
 <p class="checkout-lead">Wypełnij dane kontaktowe. Skontaktujemy się, aby potwierdzić dostępność i sposób dostawy.</p>
 
-<form id="order-form" novalidate>
+<form id="order-form" class="order-form" novalidate>
 <div class="form-grid">
-<label class="full">Imię i nazwisko *
+<label class="full">
+Imię i nazwisko *
 <input id="o-name" type="text" required maxlength="120" placeholder="np. Jan Kowalski" autocomplete="name">
 </label>
-<label>Telefon
+
+<label>
+Telefon
 <input id="o-phone" type="tel" maxlength="40" placeholder="np. +48 500 100 200" autocomplete="tel">
 </label>
-<label>E-mail
+
+<label>
+E-mail
 <input id="o-email" type="email" maxlength="120" placeholder="np. jan@example.com" autocomplete="email">
 </label>
-<label class="full">Adres dostawy *
+
+<label class="full">
+Adres dostawy *
 <textarea id="o-address" rows="3" required maxlength="500" placeholder="Ulica, numer, kod pocztowy, miasto, kraj" autocomplete="street-address"></textarea>
 </label>
-<label class="full">Uwagi (opcjonalnie)
-<textarea id="o-notes" rows="3" maxlength="1000" placeholder="Dodatkowe informacje do zamówienia"></textarea>
+
+<label class="full">
+Uwagi (opcjonalnie)
+<textarea id="o-notes" rows="2" maxlength="1000" placeholder="Dodatkowe informacje do zamówienia"></textarea>
 </label>
 </div>
 
@@ -102,7 +110,7 @@ Złóż zamówienie
 <h2>Twój koszyk <span id="checkout-count" class="total-pill">0</span></h2>
 <div id="checkout-items" class="checkout-items"></div>
 <div class="checkout-total">
-<span>Razem:</span>
+<span>Razem</span>
 <b id="checkout-total">0,00 zł</b>
 </div>
 <button type="button" class="checkout-clear" id="clear-cart">Wyczyść koszyk</button>
