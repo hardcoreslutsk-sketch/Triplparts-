@@ -14,11 +14,11 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="styles.css?v=9">
+<link rel="stylesheet" href="styles.css?v=12">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="cart.js?v=3"></script>
-<script defer src="checkout.js?v=9"></script>
+<script src="cart.js?v=6"></script>
+<script defer src="checkout.js?v=12"></script>
 </head>
 <body>
 
@@ -26,7 +26,6 @@
 <div class="container header-inner">
 <a class="brand" href="index.html">
 <span class="brand-name">TRIPL PARTS</span>
-<span class="brand-caption">USED CAR PARTS</span>
 </a>
 <nav class="header-nav">
 <a href="index.html">Katalog</a>
@@ -58,7 +57,7 @@
 <div id="checkout-success" class="checkout-success" hidden>
 <div class="success-icon">✓</div>
 <h1>Dziękujemy!</h1>
-<p>Twoje zamówienie zostało wysłane. Skontaktujemy się z Tobą wkrótce.</p>
+<p>Twoje zamówienie zostało wysłane. Skontaktujemy się z Tobą wkrótce, aby ustalić koszt dostawy.</p>
 <p class="success-ref">Numer zamówienia: <b id="order-ref"></b></p>
 <a class="button button-primary" href="index.html">Wróć do katalogu</a>
 </div>
@@ -67,7 +66,7 @@
 
 <section class="checkout-form-wrap">
 <h1>Zamówienie</h1>
-<p class="checkout-lead">Wypełnij dane kontaktowe. Skontaktujemy się, aby potwierdzić dostępność i sposób dostawy.</p>
+<p class="checkout-lead">Wypełnij dane kontaktowe. Skontaktujemy się, aby potwierdzić dostępność, koszt dostawy i sposób płatności.</p>
 
 <form id="order-form" class="order-form" novalidate>
 <div class="form-grid">
@@ -109,10 +108,24 @@ Złóż zamówienie
 <aside class="checkout-summary">
 <h2>Twój koszyk <span id="checkout-count" class="total-pill">0</span></h2>
 <div id="checkout-items" class="checkout-items"></div>
+
 <div class="checkout-total">
-<span>Razem</span>
+<span>Wartość części</span>
 <b id="checkout-total">0,00 zł</b>
 </div>
+
+<div class="checkout-shipping">
+<span>Dostawa</span>
+<em>do ustalenia</em>
+</div>
+
+<div class="checkout-grand">
+<span>Do zapłaty z dostawą</span>
+<b>ustalimy po kontakcie</b>
+</div>
+
+<p class="checkout-shipping-note">Koszt dostawy ustalamy indywidualnie po złożeniu zamówienia — w zależności od wagi i rozmiaru części.</p>
+
 <button type="button" class="checkout-clear" id="clear-cart">Wyczyść koszyk</button>
 </aside>
 
