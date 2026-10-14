@@ -13,12 +13,12 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="styles.css?v=15">
+<link rel="stylesheet" href="styles.css?v=99">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
-<script src="i18n.js?v=1"></script>
-<script src="cart.js?v=8"></script>
-<script defer src="checkout.js?v=15"></script>
+<script src="config.js?v=99"></script>
+<script src="i18n.js?v=99"></script>
+<script src="cart.js?v=99"></script>
+<script defer src="checkout.js?v=99"></script>
 </head>
 <body>
 
@@ -68,11 +68,9 @@
 </div>
 
 <div id="checkout-content" class="checkout-grid" hidden>
-
 <section class="checkout-form-wrap">
 <h1 data-i18n="checkout.title">Zamówienie</h1>
 <p class="checkout-lead" data-i18n="checkout.lead">Wypełnij dane kontaktowe.</p>
-
 <form id="order-form" class="order-form" novalidate>
 <div class="form-grid">
 <label class="full"><span data-i18n="checkout.name">Imię i nazwisko</span> *<input id="o-name" type="text" required maxlength="120" data-i18n-placeholder="checkout.namePh" placeholder="np. Jan Kowalski" autocomplete="name"></label>
@@ -90,27 +88,21 @@
 <aside class="checkout-summary">
 <h2><span data-i18n="checkout.yourCart">Twój koszyk</span> <span id="checkout-count" class="total-pill">0</span></h2>
 <div id="checkout-items" class="checkout-items"></div>
-
 <div class="checkout-total">
 <span data-i18n="checkout.partsValue">Wartość części</span>
 <b id="checkout-total">0,00 zł</b>
 </div>
-
 <div class="checkout-shipping">
 <span data-i18n="checkout.shipping">Dostawa</span>
 <em data-i18n="checkout.shippingTbd">do ustalenia</em>
 </div>
-
 <div class="checkout-grand">
 <span data-i18n="checkout.grand">Do zapłaty z dostawą</span>
 <b data-i18n="checkout.grandTbd">ustalimy po kontakcie</b>
 </div>
-
 <p class="checkout-shipping-note" data-i18n="checkout.shippingNote">Koszt dostawy ustalamy indywidualnie.</p>
-
 <button type="button" class="checkout-clear" id="clear-cart" data-i18n="checkout.clearCart">Wyczyść koszyk</button>
 </aside>
-
 </div>
 </div>
 </main>
