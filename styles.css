@@ -377,3 +377,21 @@ img{display:block;max-width:100%}
   .switcher-btn{padding:6px 9px;font-size:10px}
   .cart-link,.theme-toggle{width:34px;height:34px;font-size:14px}
 }
+/* Fix: меню языков и валют не выезжает за экран */
+@media (max-width: 720px){
+  .switcher-menu{
+    right: auto !important;
+    left: 0 !important;
+    min-width: 160px;
+    max-width: calc(100vw - 32px);
+  }
+}
+@media (min-width: 721px){
+  .switcher-menu{
+    left: auto;
+    right: 0;
+  }
+  .switcher:last-child .switcher-menu{
+    right: 0;
+  }
+}
