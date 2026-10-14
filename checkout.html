@@ -13,12 +13,12 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="styles.css?v=2000">
+<link rel="stylesheet" href="styles.css?v=2002">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=2000"></script>
-<script src="i18n.js?v=2000"></script>
-<script src="cart.js?v=2000"></script>
-<script defer src="checkout.js?v=2000"></script>
+<script src="config.js?v=2002"></script>
+<script src="i18n.js?v=2002"></script>
+<script src="cart.js?v=2002"></script>
+<script defer src="checkout.js?v=2002"></script>
 </head>
 <body>
 
@@ -31,14 +31,26 @@
       <a href="admin.html" data-i18n="nav.admin">Panel administratora</a>
     </nav>
     <div class="header-switchers">
-      <div class="switch-group" data-switch="lang">
-        <button type="button" data-lang-btn="pl">PL</button>
-        <button type="button" data-lang-btn="en">EN</button>
-        <button type="button" data-lang-btn="pt">PT</button>
+      <div class="switcher">
+        <button class="switcher-btn" type="button" data-switcher-toggle="lang" aria-expanded="false">
+          <span data-current-lang>PL</span>
+          <span class="caret">▼</span>
+        </button>
+        <div class="switcher-menu" data-switcher-menu="lang" hidden>
+          <button type="button" data-lang-btn="pl">Polski</button>
+          <button type="button" data-lang-btn="en">English</button>
+          <button type="button" data-lang-btn="pt">Português</button>
+        </div>
       </div>
-      <div class="switch-group" data-switch="currency">
-        <button type="button" data-currency-btn="PLN">PLN</button>
-        <button type="button" data-currency-btn="EUR">EUR</button>
+      <div class="switcher">
+        <button class="switcher-btn" type="button" data-switcher-toggle="currency" aria-expanded="false">
+          <span data-current-currency>PLN</span>
+          <span class="caret">▼</span>
+        </button>
+        <div class="switcher-menu" data-switcher-menu="currency" hidden>
+          <button type="button" data-currency-btn="PLN">PLN — złoty</button>
+          <button type="button" data-currency-btn="EUR">EUR — euro</button>
+        </div>
       </div>
     </div>
     <div class="header-actions">
